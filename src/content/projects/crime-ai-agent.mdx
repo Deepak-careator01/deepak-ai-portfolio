@@ -1,0 +1,98 @@
+---
+id: project-crime-ai-agent
+slug: crime-ai-agent
+title: Crime AI Agent
+summary: An investigative AI assistant that combines retrieval, structured case data, and tool use to support research-style workflows.
+featured: true
+status: beta
+technologies:
+  - Python
+  - FastAPI
+  - LangGraph
+  - OpenAI
+  - PostgreSQL
+  - RAG
+category: AI Agent
+startDate: "2024-02"
+links:
+  github: https://github.com/deepakm/crime-ai-agent
+image: /images/projects/crime-ai-agent.svg
+sectionAnchor: projects
+---
+
+## Problem Statement
+
+Research-heavy domains involve scattered sources, long documents, and repeated factual cross-checking. Manual investigation is slow and error-prone when context must be assembled across multiple artifacts.
+
+The goal was to prototype an AI agent that could retrieve relevant case context, reason over structured data, and produce grounded responses without hallucinating unsupported claims.
+
+## Solution Approach
+
+I built an agentic workflow that routes user queries through retrieval and tool execution before generating a response. The system prioritizes grounded answers by injecting retrieved passages into the model context and constraining tool outputs to structured records.
+
+The agent supports workflows such as:
+
+- Summarizing incident details from indexed documents
+- Answering questions with citations to source chunks
+- Calling tools to fetch structured entities (persons, events, locations)
+
+## System Architecture
+
+```
+User Query
+    │
+    ▼
+Router Node ──▶ Retrieve (vector search)
+    │                  │
+    ▼                  ▼
+Tool Executor ◀── Context Assembly
+    │
+    ▼
+Response Generation
+```
+
+Components:
+
+- **Ingestion pipeline** — chunking and embedding source documents
+- **Vector store** — similarity search over case materials
+- **Agent graph** — LangGraph nodes for routing, retrieval, and tools
+- **API layer** — FastAPI endpoints for chat and health checks
+
+## Technical Stack
+
+- **Backend:** Python, FastAPI
+- **Agent framework:** LangGraph
+- **Models:** OpenAI APIs for generation and embeddings
+- **Storage:** PostgreSQL for metadata and document records
+
+## Key Features
+
+- Retrieval-augmented responses with source-aware prompting
+- Tool definitions for structured lookups beyond plain text search
+- Conversation context maintained across turns
+- Modular graph nodes for future eval and observability hooks
+
+## Challenges
+
+- Balancing recall vs. precision when retrieving investigative context
+- Preventing overconfident answers when evidence is incomplete
+- Designing chunk boundaries that preserve semantic continuity across long reports
+
+## Engineering Decisions
+
+- **Graph-based orchestration** over a single monolithic prompt — clearer control flow and easier tool expansion
+- **Explicit case study sections in content** — improves future portfolio RAG and debugging of agent behavior
+- **Structured tool outputs** — reduces free-form hallucination for entity lookups
+
+## Performance or Business Impact
+
+- Reduced time to locate relevant case details during research sessions
+- Established a reusable agent template applicable to other document-heavy domains
+- Demonstrates practical agent engineering beyond basic chat wrappers
+
+## Future Improvements
+
+- Human-in-the-loop review for high-stakes answers
+- Hybrid search (keyword + vector) for rare entity names
+- Evaluation suite with golden questions and expected citations
+- Streaming UI with visible tool steps for transparency

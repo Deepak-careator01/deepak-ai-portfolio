@@ -1,0 +1,89 @@
+---
+id: blog-agentic-portfolio
+slug: building-agentic-ai-portfolio
+title: Building an Agentic AI Portfolio
+description: Why portfolios should be content-driven, AI-ready, and designed for copilots with tools—not just chat bubbles.
+summary: A practical blueprint for turning a personal portfolio into an agentic experience with structured content, RAG, and LangGraph tooling.
+publishedDate: "2025-05-12"
+updatedDate: "2025-06-01"
+author: Deepak M
+category: Agentic AI
+tags:
+  - Agentic AI
+  - LangGraph
+  - Portfolio
+  - Next.js
+featured: true
+readingTime: 8
+coverImage: /images/blog/building-agentic-ai-portfolio.svg
+sectionAnchor: blog
+---
+
+## Why static portfolios fall short
+
+A traditional portfolio answers one question well: *"What has this person built?"* It rarely answers follow-ups like *"How did they architect it?"*, *"Which projects use RAG?"*, or *"Show me their experience with LangGraph."*
+
+Visitors must manually hunt through pages. Recruiters skim. The best technical nuance—architecture decisions, trade-offs, impact—gets buried in prose nobody reads end to end.
+
+An **agentic AI portfolio** flips the model: structured content powers both human browsing and machine reasoning.
+
+## The content-first principle
+
+Before adding chat, define a **single source of truth**:
+
+- Profile and experience in typed TypeScript modules
+- Projects and blog posts in MDX with explicit frontmatter
+- Shared types consumed by UI, SEO, ingestion scripts, and agent tools
+
+When the copilot calls `getProject("crime-ai-agent")` or searches embeddings over blog chunks, it reads the same data the website renders. No drift. No duplicate bios.
+
+## Architecture overview
+
+A phased approach keeps complexity manageable:
+
+1. **Premium UI** — Server Components, dark-first design, case studies
+2. **Streaming chat** — Vercel AI SDK with a system prompt assembled from content
+3. **RAG** — Chunk MDX + profile data, embed into pgvector, retrieve at query time
+4. **Agentic copilot** — LangGraph graph with tools for search, project lookup, and section navigation
+
+```
+Visitor ──▶ Next.js UI ──▶ content/
+                │
+                ▼
+           /api/chat ──▶ LangGraph ──▶ tools + vector store
+```
+
+## Engineering decisions that matter
+
+### Server Components by default
+
+Keep MDX compilation and file I/O on the server. The client only hosts interactivity that truly needs the browser—theme toggles and, later, the copilot panel.
+
+### Explicit MDX sections
+
+Case studies and blog posts use predictable headings (`## Problem Statement`, `## Engineering Decisions`). Those headings become natural chunk boundaries during ingestion.
+
+### Tools over giant prompts
+
+Early chat prototypes stuff entire portfolios into the system prompt. That breaks at scale. Agents with **`searchPortfolio`**, **`getBlog`**, and **`navigateToSection`** scale better and produce traceable behavior.
+
+## What agentic means here
+
+"Agentic" is not a buzzword checkbox. In this portfolio it means:
+
+- **Routing** — classify intent (project question vs. blog opinion vs. navigation)
+- **Retrieval** — pull grounded context before answering
+- **Tool use** — fetch structured records and return actionable links
+- **Memory** — maintain thread context across turns (with optional persistence)
+
+## Performance and trust
+
+Agentic systems fail when they sound confident but aren't grounded. Design for:
+
+- Citations to source sections when possible
+- Clear "I don't know" paths when retrieval confidence is low
+- Visible tool steps in the UI (a future milestone)
+
+## Closing thought
+
+The portfolio is both **product** and **proof**. Building it as an AI-native system demonstrates the same engineering discipline the case studies describe—structured data, thoughtful boundaries, and incremental delivery toward a copilot that actually understands the work.

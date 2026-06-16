@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="750" viewBox="0 0 1200 750" role="img" aria-label="Modern Full-Stack AI Engineering cover">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#14532d"/>
+      <stop offset="100%" style="stop-color:#052e16"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="75%" cy="20%" r="55%">
+      <stop offset="0%" style="stop-color:#4ade80;stop-opacity:0.25"/>
+      <stop offset="100%" style="stop-color:#4ade80;stop-opacity:0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="750" fill="url(#bg)"/>
+  <rect width="1200" height="750" fill="url(#glow)"/>
+  <text x="80" y="120" fill="#f0fdf4" font-family="system-ui,sans-serif" font-size="38" font-weight="600">Modern Full-Stack AI Engineering</text>
+  <text x="80" y="175" fill="#bbf7d0" font-family="system-ui,sans-serif" font-size="22">Next.js · TypeScript · Production AI</text>
+</svg>

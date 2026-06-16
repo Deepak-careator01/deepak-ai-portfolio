@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="750" viewBox="0 0 1200 750" role="img" aria-label="Understanding RAG Systems cover">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0c4a6e"/>
+      <stop offset="100%" style="stop-color:#082f49"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="25%" cy="30%" r="50%">
+      <stop offset="0%" style="stop-color:#38bdf8;stop-opacity:0.28"/>
+      <stop offset="100%" style="stop-color:#38bdf8;stop-opacity:0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="750" fill="url(#bg)"/>
+  <rect width="1200" height="750" fill="url(#glow)"/>
+  <text x="80" y="120" fill="#f0f9ff" font-family="system-ui,sans-serif" font-size="42" font-weight="600">Understanding RAG Systems</text>
+  <text x="80" y="175" fill="#bae6fd" font-family="system-ui,sans-serif" font-size="22">Embeddings · Retrieval · Grounding</text>
+</svg>

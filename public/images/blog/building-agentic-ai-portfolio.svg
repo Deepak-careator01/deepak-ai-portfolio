@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="750" viewBox="0 0 1200 750" role="img" aria-label="Building an Agentic AI Portfolio cover">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#18181b"/>
+      <stop offset="100%" style="stop-color:#09090b"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="65%" cy="25%" r="55%">
+      <stop offset="0%" style="stop-color:#8b5cf6;stop-opacity:0.3"/>
+      <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="750" fill="url(#bg)"/>
+  <rect width="1200" height="750" fill="url(#glow)"/>
+  <text x="80" y="120" fill="#fafafa" font-family="system-ui,sans-serif" font-size="38" font-weight="600">Building an Agentic AI Portfolio</text>
+  <text x="80" y="175" fill="#a1a1aa" font-family="system-ui,sans-serif" font-size="22">Content layers · Copilots · LangGraph</text>
+</svg>

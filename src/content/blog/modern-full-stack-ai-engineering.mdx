@@ -1,0 +1,97 @@
+---
+id: blog-fullstack-ai
+slug: modern-full-stack-ai-engineering
+title: Modern Full-Stack AI Engineering
+description: How Next.js, TypeScript, and server-first architecture create a solid foundation for shipping AI features in production.
+summary: Patterns for integrating AI into full-stack apps without sacrificing performance, type safety, or maintainability.
+publishedDate: "2025-03-18"
+author: Deepak M
+category: Full-Stack
+tags:
+  - Next.js
+  - TypeScript
+  - Vercel AI SDK
+  - React
+featured: true
+readingTime: 7
+coverImage: /images/blog/modern-full-stack-ai-engineering.svg
+sectionAnchor: blog
+---
+
+## The full-stack AI stack has matured
+
+Two years ago, "AI feature" often meant a standalone Python script beside a React app. Today, TypeScript-first stacks can own the entire surface: UI, API routes, streaming responses, and agent orchestration.
+
+My default production shape:
+
+- **Next.js App Router** for UI + route handlers
+- **React Server Components** for content-heavy pages
+- **Vercel AI SDK** for streaming chat primitives
+- **PostgreSQL + Drizzle** for app data and vectors
+- **Bun** for fast local tooling
+
+## Server-first is a performance feature
+
+AI portfolios tempt you to hydrate everything for interactivity. Resist.
+
+MDX case studies, blog posts, and marketing sections should compile on the server. Clients download less JavaScript. Time-to-content improves. SEO stays clean.
+
+Reserve client components for:
+
+- Theme toggles
+- Chat panels and streaming message lists
+- Motion where it materially helps UX
+
+## Type safety across the boundary
+
+AI features fail silently when prompts are strings and responses are `any`.
+
+Patterns that help:
+
+- **Zod** for API input and tool parameters
+- **Shared content types** for profile, projects, and blog metadata
+- **Explicit env validation** so API keys never leak client-side
+
+When an agent tool returns structured JSON, the UI and graph nodes agree on the shape.
+
+## Streaming UX matters
+
+Users tolerate latency when progress is visible. The Vercel AI SDK's streaming hooks make token-by-token rendering straightforward—but design the surrounding UI deliberately:
+
+- Skeleton states for first token
+- Error recovery without losing thread context
+- Clear distinction between "thinking" and "answering"
+
+## Integrating AI without rewriting the app
+
+Phase AI work incrementally:
+
+1. Ship content and pages (no model calls)
+2. Add `/api/chat` with full-context prompt (small sites only)
+3. Introduce RAG when context exceeds window limits
+4. Add LangGraph when tools and routing are required
+
+Each phase validates value before complexity compounds.
+
+## Code example: keeping loaders separate
+
+Content loaders live in `lib/`, not components:
+
+```typescript
+// lib/blog.ts — server-only
+export function getBlogBySlug(slug: string) { /* fs + gray-matter */ }
+export async function compileBlogMDX(slug: string) { /* next-mdx-remote/rsc */ }
+```
+
+UI imports typed data. Ingestion scripts import `getBlogPlainText`. Agent tools wrap the same getters.
+
+## Production checklist
+
+- Rate-limit public chat endpoints
+- Log prompts and tool calls (redact secrets)
+- Version your ingestion pipeline with content changes
+- Monitor embedding costs and token usage
+
+## Final word
+
+Modern full-stack AI engineering is less about chasing models and more about **disciplined architecture**—the same principles that made pre-AI web apps maintainable now determine whether your copilot is trustworthy at scale.

@@ -1,0 +1,84 @@
+---
+id: project-timesheet-tidy-buddy
+slug: timesheet-tidy-buddy
+title: Timesheet Tidy Buddy
+summary: A productivity app that helps professionals clean, validate, and export timesheets with a focused, low-friction workflow.
+featured: true
+status: completed
+technologies:
+  - Next.js
+  - TypeScript
+  - React
+  - Node.js
+  - PostgreSQL
+category: Productivity
+startDate: "2023-03"
+links:
+  github: https://github.com/deepakm/timesheet-tidy-buddy
+  live: https://timesheet-tidy-buddy.example.com
+image: /images/projects/timesheet-tidy-buddy.svg
+sectionAnchor: projects
+---
+
+## Problem Statement
+
+Consultants and contractors often manage timesheets across messy spreadsheets, duplicate entries, and inconsistent project codes. Manual cleanup before billing cycles is tedious and introduces costly mistakes.
+
+Timesheet Tidy Buddy addresses the gap between raw time logs and client-ready exports.
+
+## Solution Approach
+
+The app provides a guided workflow:
+
+1. Import timesheet data (CSV / spreadsheet formats)
+2. Detect anomalies — overlaps, missing codes, rounding issues
+3. Suggest fixes with clear previews
+4. Export cleaned data to standardized formats
+
+The UX prioritizes clarity over feature breadth: users should understand every transformation before applying it.
+
+## System Architecture
+
+- **Web client** — Next.js UI for import, review, and export
+- **API routes** — validation and transformation logic on the server
+- **Database** — PostgreSQL for user sessions, projects, and saved rules
+- **Rules engine** — deterministic transforms separated from UI components
+
+## Technical Stack
+
+- **Frontend:** Next.js, React, TypeScript
+- **Backend:** Node.js API routes
+- **Database:** PostgreSQL
+- **Deployment:** Vercel-compatible serverless architecture
+
+## Key Features
+
+- Import pipeline with schema validation and friendly error messages
+- Duplicate detection and overlap highlighting
+- Project code normalization rules
+- Export templates for common billing formats
+- Responsive UI for quick weekly cleanup sessions
+
+## Challenges
+
+- Handling inconsistent real-world spreadsheet formats without brittle parsers
+- Making validation rules configurable without overwhelming casual users
+- Ensuring transformations remain auditable for compliance-sensitive teams
+
+## Engineering Decisions
+
+- **Deterministic rules first, AI later** — reliability beats novelty for billing-adjacent workflows
+- **Server-side validation** — keeps business logic out of the client and enables consistent exports
+- **Preview-before-apply** — every bulk fix shows a diff-style summary
+
+## Performance or Business Impact
+
+- Cut weekly timesheet cleanup time significantly for pilot users
+- Reduced billing discrepancies caused by duplicate entries and bad project codes
+- Demonstrated product thinking: narrow scope, high daily utility
+
+## Future Improvements
+
+- Team workspaces with shared project code libraries
+- Calendar integrations for automatic entry suggestions
+- Optional AI assistant for categorizing ambiguous entries (with human approval)

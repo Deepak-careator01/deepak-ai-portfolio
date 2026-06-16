@@ -1,0 +1,89 @@
+---
+id: blog-rag-systems
+slug: understanding-rag-systems
+title: Understanding RAG Systems
+description: A clear mental model for retrieval-augmented generation—from embeddings and chunking to grounded answers in production.
+summary: How RAG works, where it breaks, and how to design retrieval pipelines that copilots and portfolios can rely on.
+publishedDate: "2025-04-08"
+author: Deepak M
+category: RAG
+tags:
+  - RAG
+  - Embeddings
+  - pgvector
+  - AI Engineering
+featured: true
+readingTime: 10
+coverImage: /images/blog/understanding-rag-systems.svg
+sectionAnchor: blog
+---
+
+## What RAG solves
+
+Large language models are strong generalists but weak librarians. They do not natively know your portfolio, your private docs, or what you shipped last quarter.
+
+**Retrieval-augmented generation (RAG)** closes the gap by fetching relevant passages at query time and injecting them into the model context before generation.
+
+The result: answers grounded in *your* data—not plausible guesses.
+
+## Core pipeline
+
+Every RAG system shares the same skeleton:
+
+1. **Ingest** — load documents (MDX, TS content, PDFs)
+2. **Chunk** — split into retrieval-sized pieces
+3. **Embed** — convert chunks to vectors
+4. **Store** — persist in a vector database (e.g. pgvector)
+5. **Retrieve** — similarity search at query time
+6. **Generate** — LLM produces an answer using retrieved context
+
+```
+Query ──▶ embed(query) ──▶ top-k chunks ──▶ prompt assembly ──▶ LLM
+```
+
+## Chunking is the hidden product decision
+
+Bad chunks produce bad answers—even with a great model.
+
+Principles I follow:
+
+- **Respect structure** — split on headings in MDX case studies and blog posts
+- **Keep chunks focused** — one idea per chunk when possible
+- **Overlap sparingly** — small overlap can help continuity; too much adds noise
+- **Include metadata** — title, category, and tags prepended to chunks improve filtering
+
+For a portfolio, project frontmatter plus section bodies often yields cleaner chunks than naive fixed-size splits.
+
+## Embeddings and similarity search
+
+Embeddings map text to vectors where semantic similarity ≈ geometric closeness. pgvector inside PostgreSQL keeps the stack simple: one database for relational data and vectors.
+
+Watch for:
+
+- **Stale embeddings** — re-ingest when content changes
+- **Domain vocabulary** — rare acronyms may retrieve poorly without hybrid search
+- **Over-retrieval** — too many chunks dilute the prompt; start with `k=4–8`
+
+## When RAG is not enough
+
+RAG excels at *finding and summarizing*. It struggles with:
+
+- Multi-step workflows requiring live APIs
+- Precise tabular queries across many records
+- Actions like "open the Experience section"
+
+That is where **agents and tools** complement retrieval. The portfolio roadmap moves from RAG chat to LangGraph tools that call structured getters (`getExperience`, `getProject`).
+
+## Evaluation before fancy UI
+
+Before polishing a copilot panel, define golden questions:
+
+- "Which projects use LangGraph?"
+- "Summarize Deepak's approach to RAG."
+- "What challenges were solved in the Crime AI project?"
+
+Measure retrieval hit rate and answer faithfulness. UI polish comes after the pipeline is trustworthy.
+
+## Takeaway
+
+RAG is not magic—it is **information architecture plus search**. Design content and chunk boundaries deliberately, and the copilot inherits a knowledge base that scales with your writing and case studies.
