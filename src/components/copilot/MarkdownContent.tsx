@@ -16,6 +16,12 @@ export function MarkdownContent({ content, className }: MarkdownContentProps) {
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
+        h1: ({ className: headingClassName, ...props }: ComponentPropsWithoutRef<"h1">) => (
+          <h1
+            className={cn("mt-4 mb-2 text-base font-semibold text-foreground", headingClassName)}
+            {...props}
+          />
+        ),
         h2: ({ className: headingClassName, ...props }: ComponentPropsWithoutRef<"h2">) => (
           <h2
             className={cn("mt-4 mb-2 text-sm font-semibold text-foreground", headingClassName)}
