@@ -4,6 +4,7 @@ import { embed, embedMany, type EmbeddingModel } from "ai";
 import { experience } from "@/content/experience";
 import { getBlogBySlug, getBlogs } from "@/lib/blog.reader";
 import { getProjectBySlug, getProjects } from "@/lib/projects.reader";
+import { env } from "@/server/config/env";
 
 /** Supported embedding providers — extend when Groq or others add embedding APIs. */
 export type EmbeddingProviderName = "openai";
@@ -65,7 +66,7 @@ function cleanContentForChunking(content: string): string {
 }
 
 function resolveEmbeddingProviderName(): EmbeddingProviderName {
-  const configured = process.env.EMBEDDING_PROVIDER?.trim().toLowerCase();
+  const configured = env.embeddingProvider?.toLowerCase();
 
   if (!configured || configured === DEFAULT_EMBEDDING_PROVIDER) {
     return DEFAULT_EMBEDDING_PROVIDER;
@@ -77,7 +78,7 @@ function resolveEmbeddingProviderName(): EmbeddingProviderName {
 }
 
 function resolveEmbeddingApiKey(): string {
-  const apiKey = process.env.EMBEDDING_API_KEY?.trim() ?? process.env.OPENAI_API_KEY?.trim();
+  const apiKey = env.embeddingApiKey ?? env.openAiApiKey;
 
   if (!apiKey) {
     throw new Error(
@@ -90,7 +91,7 @@ function resolveEmbeddingApiKey(): string {
 
 /** Returns true when an embedding provider API key is available. */
 export function isEmbeddingsConfigured(): boolean {
-  return Boolean(process.env.EMBEDDING_API_KEY?.trim() || process.env.OPENAI_API_KEY?.trim());
+  return env.embeddingsConfigured;
 }
 
 /**
@@ -107,7 +108,7 @@ export function createEmbeddingModel(
       apiKey: resolveEmbeddingApiKey(),
     });
 
-    const modelId = process.env.EMBEDDING_MODEL?.trim() ?? DEFAULT_OPENAI_EMBEDDING_MODEL;
+    const modelId = env.embeddingModel ?? DEFAULT_OPENAI_EMBEDDING_MODEL;
     return openai.embedding(modelId);
   }
 

@@ -2,11 +2,13 @@ import "server-only";
 
 import { Pool, type PoolClient } from "pg";
 
+import { env } from "@/server/config/env";
+
 let pool: Pool | null = null;
 
 /** Returns true when DATABASE_URL is configured. */
 export function isDatabaseConfigured(): boolean {
-  return Boolean(process.env.DATABASE_URL?.trim());
+  return env.databaseConfigured;
 }
 
 /** Singleton PostgreSQL pool for server-side RAG operations. */
@@ -17,10 +19,14 @@ export function getDbPool(): Pool {
 
   if (!pool) {
     pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
+      connectionString: env.databaseUrl,
       max: 10,
       idleTimeoutMillis: 30_000,
       connectionTimeoutMillis: 10_000,
+    });
+
+    pool.on("error", (error) => {
+      console.error("[db] Unexpected pool error:", error);
     });
   }
 

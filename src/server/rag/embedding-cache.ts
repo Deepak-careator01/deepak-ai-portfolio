@@ -1,6 +1,7 @@
 import "server-only";
 
 import { embedText, normalizeTextForEmbedding } from "@/server/rag/embeddings.impl";
+import { env } from "@/server/config/env";
 
 const DEFAULT_MAX_ENTRIES = 128;
 
@@ -12,8 +13,7 @@ type CacheEntry = {
 const cache = new Map<string, CacheEntry>();
 
 function resolveMaxEntries(): number {
-  const configured = Number(process.env.RAG_EMBEDDING_CACHE_SIZE);
-  return Number.isFinite(configured) && configured > 0 ? configured : DEFAULT_MAX_ENTRIES;
+  return env.ragEmbeddingCacheSize ?? DEFAULT_MAX_ENTRIES;
 }
 
 function evictIfNeeded(): void {
