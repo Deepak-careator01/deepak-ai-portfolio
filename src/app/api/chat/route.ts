@@ -8,6 +8,13 @@ import {
   getDeepakAiSystemInstruction,
   isAiServiceConfigured,
 } from "@/server/ai";
+import {
+  createThread,
+  formatChatMemoryContext,
+  getRecentMessages,
+  saveMessage,
+  shouldInjectChatMemory,
+} from "@/server/memory/chat-memory";
 import { retrieveContext } from "@/server/rag/retriever";
 
 /**
@@ -17,6 +24,7 @@ import { retrieveContext } from "@/server/rag/retriever";
  * - Validates request body with Zod
  * - Injects portfolio-grounded system instruction
  * - Augments context with RAG retrieval when available
+ * - Loads persistent thread memory when PostgreSQL is available
  * - Streams model output via Vercel AI SDK v6
  */
 
@@ -47,19 +55,28 @@ function getLastUserMessage(messages: ChatMessage[]): string | null {
   return null;
 }
 
-function buildSystemInstruction(ragContext: string): string {
-  const baseInstruction = getDeepakAiSystemInstruction();
+function buildSystemInstruction(ragContext: string, memoryContext: string): string {
+  let instruction = getDeepakAiSystemInstruction();
 
-  if (!ragContext.trim()) {
-    return baseInstruction;
+  if (memoryContext.trim()) {
+    instruction += `
+
+---
+CONVERSATION MEMORY:
+${memoryContext}
+---`;
   }
 
-  return `${baseInstruction}
+  if (ragContext.trim()) {
+    instruction += `
 
 ---
 RELEVANT MEMORY CONTEXT (RAG):
 ${ragContext}
 ---`;
+  }
+
+  return instruction;
 }
 
 export async function POST(request: Request): Promise<Response> {
@@ -82,8 +99,27 @@ export async function POST(request: Request): Promise<Response> {
     return jsonError(message, 400);
   }
 
-  const { messages } = parsed.data;
+  const { messages, threadId } = parsed.data;
   const lastUserMessage = getLastUserMessage(messages);
+
+  let memoryContext = "";
+
+  if (threadId) {
+    try {
+      await createThread(threadId);
+
+      const storedMessages = await getRecentMessages(threadId, 20);
+      if (shouldInjectChatMemory(storedMessages, messages)) {
+        memoryContext = formatChatMemoryContext(storedMessages);
+      }
+
+      if (lastUserMessage) {
+        await saveMessage(threadId, { role: "user", content: lastUserMessage });
+      }
+    } catch (error) {
+      console.error("[/api/chat] Memory operation failed, continuing without memory:", error);
+    }
+  }
 
   let ragContext = "";
 
@@ -99,8 +135,19 @@ export async function POST(request: Request): Promise<Response> {
   try {
     const result = streamText({
       model: deepakAiChatModel,
-      system: buildSystemInstruction(ragContext),
+      system: buildSystemInstruction(ragContext, memoryContext),
       messages,
+      onFinish: async ({ text }) => {
+        if (!threadId || !text.trim()) {
+          return;
+        }
+
+        try {
+          await saveMessage(threadId, { role: "assistant", content: text });
+        } catch (error) {
+          console.error("[/api/chat] Failed to persist assistant message:", error);
+        }
+      },
     });
 
     return result.toUIMessageStreamResponse();
