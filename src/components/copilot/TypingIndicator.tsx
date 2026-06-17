@@ -7,21 +7,20 @@ type TypingIndicatorProps = {
 export function TypingIndicator({ className }: TypingIndicatorProps) {
   return (
     <div
-      className={cn("flex items-center gap-2 px-1 py-2", className)}
+      className={cn("flex items-center gap-2 px-1 py-1", className)}
       role="status"
       aria-live="polite"
-      aria-label="Deepak AI is thinking"
+      aria-label="Deepak AI is responding"
     >
-      <div className="flex items-center gap-1.5" aria-hidden>
+      <div className="flex items-center gap-1 rounded-full border border-border/50 bg-muted/30 px-3 py-2" aria-hidden>
         {[0, 1, 2].map((index) => (
           <span
             key={index}
-            className="size-1.5 animate-bounce rounded-full bg-muted-foreground/70"
-            style={{ animationDelay: `${index * 150}ms` }}
+            className="size-1.5 animate-bounce rounded-full bg-muted-foreground/60"
+            style={{ animationDelay: `${index * 160}ms`, animationDuration: "1s" }}
           />
         ))}
       </div>
-      <span className="text-sm text-muted-foreground">Deepak AI is thinking…</span>
     </div>
   );
 }
