@@ -1,13 +1,13 @@
 "use client";
 
-import { useChat } from "@ai-sdk/react";
-import { Sparkles, X } from "lucide-react";
-import { useEffect, useId, useMemo, useRef } from "react";
+import { Sparkles, Trash2, X } from "lucide-react";
+import { useEffect, useId, useRef } from "react";
 
+import { ChatErrorBanner } from "@/components/copilot/ChatErrorBanner";
 import { ChatInput } from "@/components/copilot/ChatInput";
 import { MessageList } from "@/components/copilot/MessageList";
 import { Button } from "@/components/ui/button";
-import { createCopilotChatTransport } from "@/lib/copilot/chat-transport";
+import { useCopilotChat } from "@/hooks/use-copilot-chat";
 import { cn } from "@/lib/utils";
 
 type ChatPanelProps = {
@@ -18,11 +18,18 @@ type ChatPanelProps = {
 export function ChatPanel({ open, onClose }: ChatPanelProps) {
   const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
-  const transport = useMemo(() => createCopilotChatTransport(), []);
 
-  const { messages, sendMessage, status, error } = useChat({
-    transport,
-  });
+  const {
+    messages,
+    status,
+    error,
+    sendMessage,
+    clearChat,
+    retryLastResponse,
+    abortStream,
+    clearError,
+    hasMessages,
+  } = useCopilotChat();
 
   useEffect(() => {
     if (!open) return;
@@ -45,9 +52,11 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
     };
   }, [open, onClose]);
 
-  const handleSend = async (text: string) => {
-    await sendMessage({ text });
-  };
+  useEffect(() => {
+    if (!open) {
+      abortStream();
+    }
+  }, [open, abortStream]);
 
   return (
     <div
@@ -91,34 +100,48 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
               </p>
             </div>
           </div>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={onClose}
-            aria-label="Close chat panel"
-          >
-            <X className="size-4" aria-hidden />
-          </Button>
+          <div className="flex items-center gap-1">
+            {hasMessages ? (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={clearChat}
+                aria-label="Clear chat history"
+                title="Clear chat"
+              >
+                <Trash2 className="size-4" aria-hidden />
+              </Button>
+            ) : null}
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={onClose}
+              aria-label="Close chat panel"
+            >
+              <X className="size-4" aria-hidden />
+            </Button>
+          </div>
         </header>
 
         {error ? (
-          <div
-            className="border-b border-destructive/20 bg-destructive/10 px-4 py-2 text-sm text-destructive"
-            role="alert"
-          >
-            Something went wrong. Please try again.
-          </div>
+          <ChatErrorBanner
+            error={error}
+            onRetry={() => {
+              void retryLastResponse();
+            }}
+            onDismiss={clearError}
+          />
         ) : null}
 
         <MessageList
           messages={messages}
           status={status}
           onSuggestionClick={(prompt) => {
-            void handleSend(prompt);
+            void sendMessage(prompt);
           }}
         />
 
-        <ChatInput onSend={handleSend} status={status} />
+        <ChatInput onSend={sendMessage} status={status} />
       </div>
     </div>
   );

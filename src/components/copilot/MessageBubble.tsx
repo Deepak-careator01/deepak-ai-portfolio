@@ -6,14 +6,15 @@ import { cn } from "@/lib/utils";
 
 type MessageBubbleProps = {
   message: UIMessage;
+  isStreaming?: boolean;
   className?: string;
 };
 
-export function MessageBubble({ message, className }: MessageBubbleProps) {
+export function MessageBubble({ message, isStreaming = false, className }: MessageBubbleProps) {
   const isUser = message.role === "user";
   const text = extractUIMessageText(message);
 
-  if (!text.trim()) {
+  if (!text.trim() && !isStreaming) {
     return null;
   }
 
@@ -33,8 +34,10 @@ export function MessageBubble({ message, className }: MessageBubbleProps) {
       >
         {isUser ? (
           <p className="text-sm leading-relaxed whitespace-pre-wrap">{text}</p>
-        ) : (
+        ) : text.trim() ? (
           <MarkdownContent content={text} />
+        ) : (
+          <span className="text-sm text-muted-foreground">…</span>
         )}
       </div>
     </div>

@@ -30,6 +30,7 @@ const chatMessageSchema = z.object({
 
 const chatRequestSchema = z.object({
   messages: z.array(chatMessageSchema).min(1, "At least one message is required"),
+  threadId: z.string().uuid().optional(),
 });
 
 function jsonError(message: string, status: number): Response {

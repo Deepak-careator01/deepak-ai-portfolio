@@ -6,6 +6,7 @@ import { useEffect, useRef } from "react";
 import { EmptyState } from "@/components/copilot/EmptyState";
 import { MessageBubble } from "@/components/copilot/MessageBubble";
 import { TypingIndicator } from "@/components/copilot/TypingIndicator";
+import { extractUIMessageText } from "@/lib/copilot/chat-transport";
 import { cn } from "@/lib/utils";
 
 type MessageListProps = {
@@ -24,6 +25,17 @@ export function MessageList({
   const bottomRef = useRef<HTMLDivElement>(null);
   const isLoading = status === "submitted" || status === "streaming";
 
+  const visibleMessages = messages.filter(
+    (message) => message.role === "user" || message.role === "assistant",
+  );
+
+  const lastMessage = visibleMessages.at(-1);
+  const showTypingIndicator =
+    isLoading &&
+    (visibleMessages.length === 0 ||
+      lastMessage?.role === "user" ||
+      (lastMessage?.role === "assistant" && !extractUIMessageText(lastMessage).trim()));
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages, status]);
@@ -36,16 +48,28 @@ export function MessageList({
       aria-relevant="additions text"
       aria-busy={isLoading}
     >
-      {messages.length === 0 ? (
+      {visibleMessages.length === 0 && !isLoading ? (
         <EmptyState onSuggestionClick={onSuggestionClick} />
       ) : (
         <div className="flex flex-col gap-4">
-          {messages
-            .filter((message) => message.role === "user" || message.role === "assistant")
-            .map((message) => (
-              <MessageBubble key={message.id} message={message} />
-            ))}
-          {isLoading ? <TypingIndicator /> : null}
+          {visibleMessages.map((message, index) => {
+            const isLast = index === visibleMessages.length - 1;
+            const isEmptyAssistant =
+              message.role === "assistant" && !extractUIMessageText(message).trim();
+
+            if (isLast && isEmptyAssistant && isLoading) {
+              return null;
+            }
+
+            return (
+              <MessageBubble
+                key={message.id}
+                message={message}
+                isStreaming={isLoading && isLast && message.role === "assistant"}
+              />
+            );
+          })}
+          {showTypingIndicator ? <TypingIndicator /> : null}
         </div>
       )}
 

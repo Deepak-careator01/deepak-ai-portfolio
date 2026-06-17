@@ -8,19 +8,24 @@ export function extractUIMessageText(message: UIMessage): string {
     .join("");
 }
 
+type CopilotChatTransportOptions = {
+  threadId: string;
+};
+
 /**
  * Chat transport configured for the portfolio `/api/chat` route.
  *
- * The API expects `{ messages: [{ role, content }] }` while useChat works
- * with UIMessage parts — prepareSendMessagesRequest bridges the two formats
- * without changing the backend contract.
+ * The API expects `{ messages: [{ role, content }], threadId? }` while useChat
+ * works with UIMessage parts — prepareSendMessagesRequest bridges the two formats
+ * without changing the backend streaming contract.
  */
-export function createCopilotChatTransport() {
+export function createCopilotChatTransport({ threadId }: CopilotChatTransportOptions) {
   return new DefaultChatTransport({
     api: "/api/chat",
     prepareSendMessagesRequest: ({ messages, body }) => ({
       body: {
         ...body,
+        threadId,
         messages: messages
           .filter((message) => message.role === "user" || message.role === "assistant")
           .map((message) => ({
