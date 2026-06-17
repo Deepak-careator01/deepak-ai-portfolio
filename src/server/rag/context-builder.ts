@@ -2,6 +2,7 @@ import "server-only";
 
 import type { PortfolioChunkType } from "@/server/rag/embeddings.impl";
 import type { RetrievalChunk } from "@/server/rag/retriever";
+import { env } from "@/server/config/env";
 
 const DEFAULT_MAX_CHUNK_CHARS = 900;
 const DEFAULT_MAX_TOTAL_CHARS = 5_500;
@@ -14,13 +15,11 @@ const SECTION_LABELS: Record<PortfolioChunkType, string> = {
 };
 
 function resolveMaxChunkChars(): number {
-  const configured = Number(process.env.RAG_MAX_CHUNK_CHARS);
-  return Number.isFinite(configured) && configured > 0 ? configured : DEFAULT_MAX_CHUNK_CHARS;
+  return env.ragMaxChunkChars ?? DEFAULT_MAX_CHUNK_CHARS;
 }
 
 function resolveMaxTotalChars(): number {
-  const configured = Number(process.env.RAG_MAX_CONTEXT_CHARS);
-  return Number.isFinite(configured) && configured > 0 ? configured : DEFAULT_MAX_TOTAL_CHARS;
+  return env.ragMaxContextChars ?? DEFAULT_MAX_TOTAL_CHARS;
 }
 
 function normalizeForDedup(text: string): string {

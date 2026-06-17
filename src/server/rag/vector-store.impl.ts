@@ -1,4 +1,5 @@
 import type { PortfolioChunkMetadata } from "@/server/rag/embeddings.impl";
+import { env } from "@/server/config/env";
 import { isDatabaseConfigured } from "@/server/db";
 import { PgVectorStore } from "@/server/rag/vector-stores/pgvector.store";
 
@@ -31,22 +32,14 @@ export interface VectorStore<TMetadata = Record<string, unknown>> {
 
 export type VectorStoreProviderName = "pgvector" | "upstash";
 
-const SUPPORTED_PROVIDERS: VectorStoreProviderName[] = ["pgvector", "upstash"];
-
 function resolveVectorStoreProvider(): VectorStoreProviderName | null {
-  const configured = process.env.VECTOR_STORE_PROVIDER?.trim().toLowerCase();
+  const configured = env.vectorStoreProvider;
 
-  if (!configured || configured === "none") {
+  if (configured === "none") {
     return null;
   }
 
-  if (SUPPORTED_PROVIDERS.includes(configured as VectorStoreProviderName)) {
-    return configured as VectorStoreProviderName;
-  }
-
-  throw new Error(
-    `Unsupported VECTOR_STORE_PROVIDER "${configured}". Supported: ${SUPPORTED_PROVIDERS.join(", ")}.`,
-  );
+  return configured;
 }
 
 /** Returns true when a vector store provider and its required env vars are set. */
@@ -60,10 +53,7 @@ export function isVectorStoreConfigured(): boolean {
     if (provider === "pgvector") return isDatabaseConfigured();
 
     if (provider === "upstash") {
-      return Boolean(
-        process.env.UPSTASH_VECTOR_REST_URL?.trim() &&
-          process.env.UPSTASH_VECTOR_REST_TOKEN?.trim(),
-      );
+      return Boolean(env.upstashVectorRestUrl && env.upstashVectorRestToken);
     }
 
     return false;

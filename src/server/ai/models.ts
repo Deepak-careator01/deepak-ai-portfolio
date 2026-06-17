@@ -2,6 +2,8 @@ import "server-only";
 
 import { createGroq } from "@ai-sdk/groq";
 
+import { env } from "@/server/config/env";
+
 /**
  * Centralised AI model configuration.
  *
@@ -10,7 +12,7 @@ import { createGroq } from "@ai-sdk/groq";
  */
 
 const groq = createGroq({
-  apiKey: process.env.GROQ_API_KEY,
+  apiKey: env.groqApiKey ?? "",
 });
 
 /** Default chat model for the Deepak AI copilot. */
@@ -23,5 +25,5 @@ export const models = {
 
 /** Returns true when the Groq API key is present (server-only). */
 export function isAiServiceConfigured(): boolean {
-  return Boolean(process.env.GROQ_API_KEY?.trim());
+  return env.groqConfigured;
 }

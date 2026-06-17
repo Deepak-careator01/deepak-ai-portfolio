@@ -2,6 +2,7 @@ import "server-only";
 
 import { buildRagContext } from "@/server/rag/context-builder";
 import { clearEmbeddingCache, embedTextCached } from "@/server/rag/embedding-cache";
+import { env } from "@/server/config/env";
 import {
   buildPortfolioChunks,
   isEmbeddingsConfigured,
@@ -105,8 +106,7 @@ export function shouldRunRag(query: string): boolean {
 }
 
 function resolveTopK(): number {
-  const configured = Number(process.env.RAG_TOP_K);
-  return Number.isFinite(configured) && configured > 0 ? configured : DEFAULT_TOP_K;
+  return env.ragTopK ?? DEFAULT_TOP_K;
 }
 
 function extractQueryTerms(query: string): string[] {

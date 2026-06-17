@@ -1,13 +1,22 @@
 import "server-only";
 
 import { streamText } from "ai";
-import { z } from "zod";
 
+import {
+  chatRequestSchema,
+  getLastUserMessage,
+  validateConversationSize,
+} from "@/server/chat/request-validation";
 import {
   deepakAiChatModel,
   getDeepakAiSystemInstruction,
   isAiServiceConfigured,
 } from "@/server/ai";
+import {
+  createRequestLogger,
+  generateRequestId,
+  getClientIp,
+} from "@/server/logging/logger";
 import {
   createThread,
   formatChatMemoryContext,
@@ -15,7 +24,10 @@ import {
   saveMessage,
   shouldInjectChatMemory,
 } from "@/server/memory/chat-memory";
+import { badRequest, internalError, rateLimited, serviceUnavailable } from "@/server/http/errors";
 import { retrieveContext } from "@/server/rag/retriever";
+import { analyzeInputSafety } from "@/server/security/input-safety";
+import { checkChatRateLimit } from "@/server/security/rate-limit";
 
 /**
  * POST /api/chat
@@ -28,35 +40,20 @@ import { retrieveContext } from "@/server/rag/retriever";
  * - Streams model output via Vercel AI SDK v6
  */
 
-const chatMessageSchema = z.object({
-  role: z.enum(["user", "assistant"]),
-  content: z.string().trim().min(1, "Message content cannot be empty"),
-});
-
-const chatRequestSchema = z.object({
-  messages: z.array(chatMessageSchema).min(1, "At least one message is required"),
-  threadId: z.string().uuid().optional(),
-});
-
-type ChatMessage = z.infer<typeof chatMessageSchema>;
-
-function jsonError(message: string, status: number): Response {
-  return Response.json({ error: message }, { status });
-}
-
-function getLastUserMessage(messages: ChatMessage[]): string | null {
-  for (let index = messages.length - 1; index >= 0; index -= 1) {
-    const message = messages[index];
-    if (message.role === "user") {
-      return message.content;
-    }
-  }
-
-  return null;
-}
-
-function buildSystemInstruction(ragContext: string, memoryContext: string): string {
+function buildSystemInstruction(
+  ragContext: string,
+  memoryContext: string,
+  safetyContext: string,
+): string {
   let instruction = getDeepakAiSystemInstruction();
+
+  if (safetyContext.trim()) {
+    instruction += `
+
+---
+${safetyContext}
+---`;
+  }
 
   if (memoryContext.trim()) {
     instruction += `
@@ -80,8 +77,32 @@ ${ragContext}
 }
 
 export async function POST(request: Request): Promise<Response> {
+  const requestId = generateRequestId();
+  const startedAt = Date.now();
+  const ip = getClientIp(request);
+  const userAgent = request.headers.get("user-agent") ?? undefined;
+
+  const logger = createRequestLogger({
+    requestId,
+    ip,
+    userAgent,
+    model: "llama-3.3-70b-versatile",
+  });
+
+  logger.info("request_started");
+
+  const rateLimit = await checkChatRateLimit(ip);
+  if (!rateLimit.success) {
+    logger.warn("rate_limit_triggered", {
+      metadata: { limit: rateLimit.limit, resetAt: rateLimit.resetAt },
+    });
+
+    return rateLimited("Rate limit exceeded. Please try again later.", requestId);
+  }
+
   if (!isAiServiceConfigured()) {
-    return jsonError("AI service is not configured.", 500);
+    logger.error("ai_service_unavailable");
+    return serviceUnavailable("AI service is not configured.", requestId);
   }
 
   let body: unknown;
@@ -89,20 +110,42 @@ export async function POST(request: Request): Promise<Response> {
   try {
     body = await request.json();
   } catch {
-    return jsonError("Invalid JSON body.", 400);
+    logger.warn("invalid_json_body");
+    return badRequest("Invalid JSON body.", requestId);
   }
 
   const parsed = chatRequestSchema.safeParse(body);
 
   if (!parsed.success) {
     const message = parsed.error.issues.map((issue) => issue.message).join("; ");
-    return jsonError(message, 400);
+    logger.warn("validation_failed", { error: message });
+    return badRequest(message, requestId);
   }
 
   const { messages, threadId } = parsed.data;
+  const sizeError = validateConversationSize(messages);
+
+  if (sizeError) {
+    logger.warn("payload_too_large", { error: sizeError });
+    return badRequest(sizeError, requestId);
+  }
+
   const lastUserMessage = getLastUserMessage(messages);
+  const inputSafety = lastUserMessage ? analyzeInputSafety(lastUserMessage) : null;
+
+  if (inputSafety?.suspicious) {
+    logger.warn("suspicious_input_detected", {
+      metadata: { reasons: inputSafety.reasons },
+    });
+  }
+
+  logger.info("request_validated", {
+    threadId,
+    metadata: { messageCount: messages.length },
+  });
 
   let memoryContext = "";
+  let memoryUsed = false;
 
   if (threadId) {
     try {
@@ -111,49 +154,81 @@ export async function POST(request: Request): Promise<Response> {
       const storedMessages = await getRecentMessages(threadId, 20);
       if (shouldInjectChatMemory(storedMessages, messages)) {
         memoryContext = formatChatMemoryContext(storedMessages);
+        memoryUsed = memoryContext.length > 0;
       }
 
       if (lastUserMessage) {
         await saveMessage(threadId, { role: "user", content: lastUserMessage });
       }
     } catch (error) {
-      console.error("[/api/chat] Memory operation failed, continuing without memory:", error);
+      logger.warn("memory_operation_failed", {
+        error: error instanceof Error ? error.message : "unknown_error",
+      });
     }
   }
 
   let ragContext = "";
+  let ragHits = 0;
 
   if (lastUserMessage) {
     try {
       const rag = await retrieveContext(lastUserMessage);
       ragContext = rag.context;
+      ragHits = rag.hits;
+
+      logger.info("rag_retrieval_completed", {
+        ragHits,
+        latencyMs: Date.now() - startedAt,
+        metadata: { used: ragHits > 0 },
+      });
     } catch (error) {
-      console.error("[/api/chat] RAG retrieval failed, continuing without RAG:", error);
+      logger.warn("rag_retrieval_failed", {
+        error: error instanceof Error ? error.message : "unknown_error",
+      });
     }
   }
 
   try {
     const result = streamText({
       model: deepakAiChatModel,
-      system: buildSystemInstruction(ragContext, memoryContext),
+      system: buildSystemInstruction(
+        ragContext,
+        memoryContext,
+        inputSafety?.safetyContext ?? "",
+      ),
       messages,
       onFinish: async ({ text }) => {
-        if (!threadId || !text.trim()) {
-          return;
+        if (threadId && text.trim()) {
+          try {
+            await saveMessage(threadId, { role: "assistant", content: text });
+          } catch (error) {
+            logger.warn("assistant_message_persist_failed", {
+              error: error instanceof Error ? error.message : "unknown_error",
+            });
+          }
         }
 
-        try {
-          await saveMessage(threadId, { role: "assistant", content: text });
-        } catch (error) {
-          console.error("[/api/chat] Failed to persist assistant message:", error);
-        }
+        logger.info("llm_response_completed", {
+          threadId,
+          latencyMs: Date.now() - startedAt,
+          ragHits,
+          memoryUsed,
+          status: "success",
+        });
       },
     });
 
     return result.toUIMessageStreamResponse();
   } catch (error) {
-    console.error("[/api/chat] Failed to generate response:", error);
+    logger.error("request_failed", {
+      threadId,
+      latencyMs: Date.now() - startedAt,
+      ragHits,
+      memoryUsed,
+      status: "error",
+      error: error instanceof Error ? error.message : "unknown_error",
+    });
 
-    return jsonError("Failed to generate AI response. Please try again later.", 500);
+    return internalError("Failed to generate AI response. Please try again later.", requestId);
   }
 }
