@@ -36,3 +36,22 @@ export async function withDbClient<T>(fn: (client: PoolClient) => Promise<T>): P
     client.release();
   }
 }
+
+/**
+ * Safe DB helper for optional features (e.g. chat memory).
+ * Returns null when the database is unavailable or the operation fails.
+ */
+export async function withDbClientSafe<T>(
+  fn: (client: PoolClient) => Promise<T>,
+): Promise<T | null> {
+  if (!isDatabaseConfigured()) {
+    return null;
+  }
+
+  try {
+    return await withDbClient(fn);
+  } catch (error) {
+    console.error("[db] Operation failed:", error);
+    return null;
+  }
+}
