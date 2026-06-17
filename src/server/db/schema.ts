@@ -1,9 +1,9 @@
 /**
- * Drizzle schema definitions (Phase 3+).
- *
- * Planned tables:
- * - documents — portfolio content sources
- * - chunks — text chunks for retrieval
- * - embeddings — pgvector embeddings linked to chunks
+ * Database table names and constants for RAG storage.
  */
-export {};
+export const RAG_EMBEDDINGS_TABLE = "rag_embeddings";
+
+/**
+ * pgvector dimensions for `text-embedding-3-small`.
+ */
+export const EMBEDDING_DIMENSIONS = 1536;

@@ -2,6 +2,7 @@ import "server-only";
 
 export type {
   PortfolioVectorMetadata,
+  VectorQueryResult,
   VectorRecord,
   VectorStore,
   VectorStoreProviderName,
