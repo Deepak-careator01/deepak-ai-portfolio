@@ -1,6 +1,7 @@
 export { ChatErrorBanner } from "@/components/copilot/ChatErrorBanner";
 export { ChatPanel } from "@/components/copilot/ChatPanel";
 export { ChatInput } from "@/components/copilot/ChatInput";
+export { ChatSidebar } from "@/components/copilot/ChatSidebar";
 export { CopilotButton } from "@/components/copilot/CopilotButton";
 export { CopilotLauncher } from "@/components/copilot/CopilotLauncher";
 export { EmptyState } from "@/components/copilot/EmptyState";

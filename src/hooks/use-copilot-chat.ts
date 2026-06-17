@@ -2,23 +2,37 @@
 
 import { useChat } from "@ai-sdk/react";
 import type { ChatStatus } from "ai";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   createCopilotChatTransport,
   extractUIMessageText,
 } from "@/lib/copilot/chat-transport";
+import { loadStoredMessages, saveStoredMessages } from "@/lib/copilot/chat-storage";
 import {
-  clearStoredMessages,
-  getOrCreateThreadId,
-  loadStoredMessages,
-  saveStoredMessages,
-} from "@/lib/copilot/chat-storage";
+  createThread,
+  deleteThread as deleteThreadRecord,
+  ensureThreadExists,
+  generateThreadTitle,
+  getThreads,
+  resolveInitialActiveThreadId,
+  setActiveThread,
+  updateThreadMetadata,
+  type CopilotThread,
+} from "@/lib/copilot/thread-manager";
 
 export function useCopilotChat() {
-  const threadId = useMemo(() => getOrCreateThreadId(), []);
-  const initialMessages = useMemo(() => loadStoredMessages(threadId), [threadId]);
-  const transport = useMemo(() => createCopilotChatTransport({ threadId }), [threadId]);
+  const [activeThreadId, setActiveThreadId] = useState("ssr-placeholder");
+  const [threads, setThreads] = useState<CopilotThread[]>([]);
+
+  const initialMessages = useMemo(
+    () => (activeThreadId === "ssr-placeholder" ? [] : loadStoredMessages(activeThreadId)),
+    [activeThreadId],
+  );
+  const transport = useMemo(
+    () => createCopilotChatTransport({ threadId: activeThreadId }),
+    [activeThreadId],
+  );
 
   const {
     messages,
@@ -30,21 +44,89 @@ export function useCopilotChat() {
     stop,
     clearError,
   } = useChat({
-    id: threadId,
+    id: activeThreadId,
     messages: initialMessages,
     transport,
   });
 
-  useEffect(() => {
-    saveStoredMessages(threadId, messages);
-  }, [messages, threadId]);
+  const refreshThreads = useCallback(() => {
+    setThreads(getThreads());
+  }, []);
 
-  const clearChat = useCallback(() => {
+  useEffect(() => {
+    const threadId = resolveInitialActiveThreadId();
+    setActiveThreadId(threadId);
+    setThreads(getThreads());
+    setMessages(loadStoredMessages(threadId));
+  }, [setMessages]);
+
+  useEffect(() => {
+    if (activeThreadId === "ssr-placeholder") {
+      return;
+    }
+
+    ensureThreadExists(activeThreadId);
+    setActiveThread(activeThreadId);
+    saveStoredMessages(activeThreadId, messages);
+
+    const firstUserMessage = messages.find((message) => message.role === "user");
+    const updates: { lastUpdated: number; title?: string } = {
+      lastUpdated: Date.now(),
+    };
+
+    if (firstUserMessage) {
+      updates.title = generateThreadTitle(extractUIMessageText(firstUserMessage));
+    }
+
+    updateThreadMetadata(activeThreadId, updates);
+    refreshThreads();
+  }, [activeThreadId, messages, refreshThreads]);
+
+  const switchThread = useCallback(
+    (threadId: string) => {
+      if (threadId === activeThreadId) {
+        return;
+      }
+
+      stop();
+      clearError();
+      setActiveThread(threadId);
+      setActiveThreadId(threadId);
+      setMessages(loadStoredMessages(threadId));
+      refreshThreads();
+    },
+    [activeThreadId, clearError, refreshThreads, setMessages, stop],
+  );
+
+  const createNewChat = useCallback(() => {
     stop();
     clearError();
+    const thread = createThread();
+    setActiveThreadId(thread.id);
     setMessages([]);
-    clearStoredMessages(threadId);
-  }, [clearError, setMessages, stop, threadId]);
+    refreshThreads();
+  }, [clearError, refreshThreads, setMessages, stop]);
+
+  const deleteThread = useCallback(
+    (threadId: string) => {
+      const isActive = threadId === activeThreadId;
+      deleteThreadRecord(threadId);
+
+      if (isActive) {
+        const remaining = getThreads();
+        if (remaining.length > 0) {
+          switchThread(remaining[0].id);
+        } else {
+          const thread = createThread();
+          setActiveThreadId(thread.id);
+          setMessages([]);
+        }
+      }
+
+      refreshThreads();
+    },
+    [activeThreadId, refreshThreads, setMessages, switchThread],
+  );
 
   const retryLastResponse = useCallback(async () => {
     clearError();
@@ -75,14 +157,24 @@ export function useCopilotChat() {
     }
   }, [status, stop]);
 
+  const handleRegenerate = useCallback(() => {
+    void retryLastResponse();
+  }, [retryLastResponse]);
+
   return {
-    threadId,
+    threadId: activeThreadId,
+    activeThreadId,
+    threads,
     messages,
     status: status as ChatStatus,
     error,
     sendMessage: handleSend,
-    clearChat,
+    switchThread,
+    createNewChat,
+    deleteThread,
+    clearChat: createNewChat,
     retryLastResponse,
+    regenerate: handleRegenerate,
     abortStream,
     clearError,
     hasMessages: messages.length > 0,

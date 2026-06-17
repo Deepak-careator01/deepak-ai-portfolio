@@ -2,7 +2,7 @@
 
 import type { ChatStatus } from "ai";
 import { Loader2, Send } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -10,19 +10,52 @@ import { cn } from "@/lib/utils";
 type ChatInputProps = {
   onSend: (message: string) => Promise<void>;
   status: ChatStatus;
+  prefill?: string;
+  onPrefillConsumed?: () => void;
   className?: string;
 };
 
-export function ChatInput({ onSend, status, className }: ChatInputProps) {
+export function ChatInput({
+  onSend,
+  status,
+  prefill,
+  onPrefillConsumed,
+  className,
+}: ChatInputProps) {
   const [input, setInput] = useState("");
-  const isBusy = status === "submitted" || status === "streaming";
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const isBusy = status === "submitted" || status === "streaming" || isSubmitting;
+
+  useEffect(() => {
+    textareaRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    if (!prefill) {
+      return;
+    }
+
+    setInput(prefill);
+    onPrefillConsumed?.();
+    textareaRef.current?.focus();
+  }, [prefill, onPrefillConsumed]);
 
   const handleSend = async () => {
     const trimmed = input.trim();
-    if (!trimmed || isBusy) return;
+    if (!trimmed || isBusy) {
+      return;
+    }
 
+    setIsSubmitting(true);
     setInput("");
-    await onSend(trimmed);
+
+    try {
+      await onSend(trimmed);
+    } finally {
+      setIsSubmitting(false);
+      textareaRef.current?.focus();
+    }
   };
 
   return (
@@ -38,6 +71,7 @@ export function ChatInput({ onSend, status, className }: ChatInputProps) {
           Message Deepak AI
         </label>
         <textarea
+          ref={textareaRef}
           id="copilot-chat-input"
           rows={1}
           value={input}
@@ -66,6 +100,9 @@ export function ChatInput({ onSend, status, className }: ChatInputProps) {
           )}
         </Button>
       </form>
+      <p className="mt-2 text-[11px] text-muted-foreground">
+        Enter to send · Shift + Enter for new line
+      </p>
     </div>
   );
 }
