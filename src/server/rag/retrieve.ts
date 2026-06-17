@@ -1,5 +1,10 @@
 /**
- * Vector retrieval utilities (Phase 3+).
- * Similarity search over pgvector embeddings.
+ * Vector retrieval utilities — re-exports from the RAG retriever module.
  */
-export {};
+export type { RetrievalChunk, RetrievalResult } from "@/server/rag/retriever";
+export {
+  clearRetrievalCache,
+  getPortfolioChunkCount,
+  retrieveContext,
+  shouldRunRag,
+} from "@/server/rag/retriever";
