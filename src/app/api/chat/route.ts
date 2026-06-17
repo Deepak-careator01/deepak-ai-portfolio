@@ -6,6 +6,7 @@ import { z } from "zod";
 import {
   deepakAiChatModel,
   getDeepakAiSystemInstruction,
+  isAiServiceConfigured,
 } from "@/server/ai";
 
 /**
@@ -36,7 +37,7 @@ function jsonError(message: string, status: number): Response {
 }
 
 export async function POST(request: Request): Promise<Response> {
-  if (!process.env.OPENAI_API_KEY) {
+  if (!isAiServiceConfigured()) {
     return jsonError("AI service is not configured.", 500);
   }
 

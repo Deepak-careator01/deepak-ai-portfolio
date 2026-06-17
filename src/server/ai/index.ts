@@ -10,7 +10,7 @@ import { DEEPAK_AI_SYSTEM_PROMPT } from "@/server/ai/prompts/system";
 
 export { DEEPAK_AI_SYSTEM_PROMPT } from "@/server/ai/prompts/system";
 export { getPortfolioContext } from "@/server/ai/context/portfolio-context";
-export { deepakAiChatModel, models } from "@/server/ai/models";
+export { deepakAiChatModel, isAiServiceConfigured, models } from "@/server/ai/models";
 
 /**
  * Builds the full system instruction passed to the model.

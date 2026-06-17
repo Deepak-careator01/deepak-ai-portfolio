@@ -54,6 +54,7 @@ function toProjectMeta(project: ProjectDocument): ProjectMeta {
     featured,
     status,
     technologies,
+    technologiesPlanned,
     category,
     startDate,
     links,
@@ -69,6 +70,7 @@ function toProjectMeta(project: ProjectDocument): ProjectMeta {
     featured,
     status,
     technologies,
+    technologiesPlanned,
     category,
     startDate,
     links,
@@ -106,15 +108,22 @@ export function getProjectPlainText(slug: string): string | null {
   if (!project) return null;
 
   const { content, ...meta } = project;
-  return [
+  const sections = [
     `Title: ${meta.title}`,
     `Summary: ${meta.summary}`,
     `Category: ${meta.category}`,
     `Status: ${meta.status}`,
-    `Technologies: ${meta.technologies.join(", ")}`,
-    "",
-    content,
-  ].join("\n");
+    "Technologies Used Today:",
+    ...meta.technologies.map((tech) => `- ${tech}`),
+  ];
+
+  if (meta.technologiesPlanned && meta.technologiesPlanned.length > 0) {
+    sections.push("Future Roadmap (planned):", ...meta.technologiesPlanned.map((tech) => `- ${tech}`));
+  }
+
+  sections.push("", content);
+
+  return sections.join("\n");
 }
 
 export type CompiledProject = {

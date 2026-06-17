@@ -18,7 +18,7 @@ export function CopilotButton({ onClick, className }: CopilotButtonProps) {
         size="lg"
         className="h-12 gap-2 rounded-full px-5 shadow-lg shadow-black/10 dark:shadow-black/30"
         aria-haspopup="dialog"
-        aria-label="Ask Deepak AI — opens copilot placeholder"
+        aria-label="Ask Deepak AI — open chat assistant"
       >
         <Sparkles className="size-4" aria-hidden />
         <span className="hidden sm:inline">Ask Deepak AI</span>
@@ -28,7 +28,7 @@ export function CopilotButton({ onClick, className }: CopilotButtonProps) {
         role="tooltip"
         className="pointer-events-none absolute right-0 bottom-full mb-2 hidden rounded-md border border-border/60 bg-background px-2 py-1 text-xs text-muted-foreground opacity-0 shadow-sm transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 md:block"
       >
-        AI Copilot — coming in Phase 2
+        AI Copilot — ask about my portfolio
       </span>
     </div>
   );

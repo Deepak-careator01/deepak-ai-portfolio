@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createOpenAI } from "@ai-sdk/openai";
+import { createGroq } from "@ai-sdk/groq";
 
 /**
  * Centralised AI model configuration.
@@ -9,14 +9,19 @@ import { createOpenAI } from "@ai-sdk/openai";
  * Swap providers or model names here without changing API route handlers.
  */
 
-const openai = createOpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+const groq = createGroq({
+  apiKey: process.env.GROQ_API_KEY,
 });
 
 /** Default chat model for the Deepak AI copilot. */
-export const deepakAiChatModel = openai.chat("gpt-4.1-mini");
+export const deepakAiChatModel = groq("llama-3.3-70b-versatile");
 
 export const models = {
-  openai,
+  groq,
   defaultChat: deepakAiChatModel,
 };
+
+/** Returns true when the Groq API key is present (server-only). */
+export function isAiServiceConfigured(): boolean {
+  return Boolean(process.env.GROQ_API_KEY?.trim());
+}

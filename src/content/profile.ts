@@ -17,7 +17,7 @@ export const profile: Profile = {
   journey:
     "I started in full-stack web development, shipping user-facing products end to end. Over time, my focus shifted toward AI-native systems — combining strong engineering fundamentals with LLMs, retrieval, and agent workflows to build assistants that feel genuinely useful.",
   currentFocus:
-    "Deepak AI Portfolio — an AI-native portfolio with a copilot that understands my work, powered by RAG and LangGraph agent tooling.",
+    "Deepak AI Portfolio — shipping an AI-native portfolio with a streaming copilot grounded in structured content, with RAG and LangGraph agent tooling on the roadmap.",
   strengths: [
     "Designing content-driven architectures ready for RAG and agents",
     "Shipping type-safe full-stack apps with Next.js and TypeScript",
