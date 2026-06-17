@@ -1,4 +1,6 @@
 import type { PortfolioChunkMetadata } from "@/server/rag/embeddings.impl";
+import { isDatabaseConfigured } from "@/server/db";
+import { PgVectorStore } from "@/server/rag/vector-stores/pgvector.store";
 
 /** A single vector record ready for persistence. */
 export type VectorRecord<TMetadata = Record<string, unknown>> = {
@@ -11,6 +13,10 @@ export type PortfolioVectorMetadata = PortfolioChunkMetadata & {
   content: string;
 };
 
+export type VectorQueryResult<TMetadata = Record<string, unknown>> = VectorRecord<TMetadata> & {
+  score: number;
+};
+
 /**
  * Provider-agnostic vector store contract.
  *
@@ -20,11 +26,7 @@ export interface VectorStore<TMetadata = Record<string, unknown>> {
   upsert(vectors: VectorRecord<TMetadata>[]): Promise<void>;
   clear(): Promise<void>;
   exists(): Promise<boolean>;
-  /** Optional semantic search — implemented by concrete vector store adapters. */
-  query?(
-    embedding: number[],
-    topK: number,
-  ): Promise<VectorRecord<PortfolioVectorMetadata>[]>;
+  query(embedding: number[], topK: number): Promise<VectorQueryResult<TMetadata>[]>;
 }
 
 export type VectorStoreProviderName = "pgvector" | "upstash";
@@ -55,9 +57,7 @@ export function isVectorStoreConfigured(): boolean {
       return false;
     }
 
-    if (provider === "pgvector") {
-      return Boolean(process.env.DATABASE_URL?.trim());
-    }
+    if (provider === "pgvector") return isDatabaseConfigured();
 
     if (provider === "upstash") {
       return Boolean(
@@ -90,6 +90,10 @@ class UnconfiguredVectorStore implements VectorStore<PortfolioVectorMetadata> {
   async exists(): Promise<boolean> {
     return false;
   }
+
+  async query(): Promise<VectorQueryResult<PortfolioVectorMetadata>[]> {
+    return [];
+  }
 }
 
 /**
@@ -115,6 +119,10 @@ class PendingVectorStore implements VectorStore<PortfolioVectorMetadata> {
   async exists(): Promise<boolean> {
     return false;
   }
+
+  async query(): Promise<VectorQueryResult<PortfolioVectorMetadata>[]> {
+    return [];
+  }
 }
 
 /**
@@ -137,6 +145,9 @@ export function createVectorStore(): VectorStore<PortfolioVectorMetadata> {
     return new UnconfiguredVectorStore();
   }
 
-  // Adapter implementations (pgvector, Upstash, etc.) will be wired in a later phase.
+  if (provider === "pgvector") {
+    return new PgVectorStore();
+  }
+
   return new PendingVectorStore(provider);
 }

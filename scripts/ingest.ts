@@ -62,6 +62,11 @@ function toVectorRecords(
   }));
 }
 
+function shouldClearBeforeIngest(): boolean {
+  const value = process.env.INGEST_CLEAR?.trim().toLowerCase();
+  return value === "1" || value === "true" || value === "yes";
+}
+
 async function main(): Promise<void> {
   log("Starting portfolio RAG ingestion pipeline…");
 
@@ -128,24 +133,24 @@ async function main(): Promise<void> {
   }
 
   const vectorStore = createVectorStore();
-  const storeExists = await vectorStore.exists();
-
-  if (!storeExists) {
-    warn(
-      "Vector store adapter is not fully implemented yet. Vectors were prepared but not persisted.",
-    );
-    await vectorStore.upsert(vectors);
-    log("Ingestion complete (embeddings generated, persistence pending implementation).");
-    return;
+  if (shouldClearBeforeIngest()) {
+    log("Clearing existing vectors before upsert (INGEST_CLEAR enabled)…");
+    await vectorStore.clear();
+  } else {
+    log("Preserving existing vectors (set INGEST_CLEAR=true to clear first).");
   }
-
-  log("Clearing existing vectors…");
-  await vectorStore.clear();
 
   log("Upserting vectors…");
   await vectorStore.upsert(vectors);
 
-  log(`Ingestion complete — ${vectors.length} vector(s) stored.`);
+  const storeReady = await vectorStore.exists();
+  if (!storeReady) {
+    warn("Vector store is configured but not query-ready after ingestion.");
+  }
+
+  log(
+    `Ingestion complete — attempted: ${vectors.length}, embedded: ${embeddingSuccessCount}, failures: ${embeddingFailures}.`,
+  );
 }
 
 main().catch((error: unknown) => {

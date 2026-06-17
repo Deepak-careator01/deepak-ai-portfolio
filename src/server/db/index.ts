@@ -1,5 +1,38 @@
-/**
- * Database client (Phase 3+).
- * Drizzle ORM + PostgreSQL connection will be configured here.
- */
-export {};
+import "server-only";
+
+import { Pool, type PoolClient } from "pg";
+
+let pool: Pool | null = null;
+
+/** Returns true when DATABASE_URL is configured. */
+export function isDatabaseConfigured(): boolean {
+  return Boolean(process.env.DATABASE_URL?.trim());
+}
+
+/** Singleton PostgreSQL pool for server-side RAG operations. */
+export function getDbPool(): Pool {
+  if (!isDatabaseConfigured()) {
+    throw new Error("DATABASE_URL is not configured.");
+  }
+
+  if (!pool) {
+    pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      max: 10,
+      idleTimeoutMillis: 30_000,
+      connectionTimeoutMillis: 10_000,
+    });
+  }
+
+  return pool;
+}
+
+/** Helper to execute work with a checked-out client. */
+export async function withDbClient<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
+  const client = await getDbPool().connect();
+  try {
+    return await fn(client);
+  } finally {
+    client.release();
+  }
+}
