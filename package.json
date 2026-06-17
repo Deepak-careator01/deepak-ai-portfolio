@@ -12,6 +12,8 @@
     "check": "biome check .",
     "check:fix": "biome check --write .",
     "typecheck": "tsc --noEmit",
+    "verify:env": "bun scripts/verify-env-schema.ts",
+    "migrate": "bun scripts/migrate.ts",
     "ingest": "bun scripts/ingest.ts"
   },
   "dependencies": {

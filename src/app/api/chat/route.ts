@@ -25,6 +25,8 @@ import {
   shouldInjectChatMemory,
 } from "@/server/memory/chat-memory";
 import { badRequest, internalError, rateLimited, serviceUnavailable } from "@/server/http/errors";
+import { trackAnalyticsEvent } from "@/server/monitoring/analytics";
+import { getMonitoring } from "@/server/monitoring/monitoring";
 import { retrieveContext } from "@/server/rag/retriever";
 import { analyzeInputSafety } from "@/server/security/input-safety";
 import { checkChatRateLimit } from "@/server/security/rate-limit";
@@ -96,6 +98,10 @@ export async function POST(request: Request): Promise<Response> {
     logger.warn("rate_limit_triggered", {
       metadata: { limit: rateLimit.limit, resetAt: rateLimit.resetAt },
     });
+    trackAnalyticsEvent("rate_limit_triggered", {
+      limit: rateLimit.limit,
+      resetAt: rateLimit.resetAt,
+    });
 
     return rateLimited("Rate limit exceeded. Please try again later.", requestId);
   }
@@ -144,6 +150,11 @@ export async function POST(request: Request): Promise<Response> {
     metadata: { messageCount: messages.length },
   });
 
+  trackAnalyticsEvent("chat_started", {
+    messageCount: messages.length,
+    hasThreadId: Boolean(threadId),
+  });
+
   let memoryContext = "";
   let memoryUsed = false;
 
@@ -181,10 +192,16 @@ export async function POST(request: Request): Promise<Response> {
         latencyMs: Date.now() - startedAt,
         metadata: { used: ragHits > 0 },
       });
+
+      trackAnalyticsEvent(ragHits > 0 ? "rag_hit" : "rag_miss", {
+        ragHits,
+        latencyMs: Date.now() - startedAt,
+      });
     } catch (error) {
       logger.warn("rag_retrieval_failed", {
         error: error instanceof Error ? error.message : "unknown_error",
       });
+      trackAnalyticsEvent("rag_failure");
     }
   }
 
@@ -215,6 +232,16 @@ export async function POST(request: Request): Promise<Response> {
           memoryUsed,
           status: "success",
         });
+
+        trackAnalyticsEvent("chat_completed", {
+          latencyMs: Date.now() - startedAt,
+          ragHits,
+          memoryUsed,
+        });
+        getMonitoring().performance.trackDuration("chat.request", Date.now() - startedAt, {
+          ragHits,
+          memoryUsed,
+        });
       },
     });
 
@@ -228,6 +255,11 @@ export async function POST(request: Request): Promise<Response> {
       status: "error",
       error: error instanceof Error ? error.message : "unknown_error",
     });
+
+    trackAnalyticsEvent("chat_failed", {
+      latencyMs: Date.now() - startedAt,
+    });
+    getMonitoring().errors.captureException(error, { requestId, threadId });
 
     return internalError("Failed to generate AI response. Please try again later.", requestId);
   }

@@ -1,5 +1,7 @@
 import "server-only";
 
+import { validateEnvironmentSchema } from "@/server/config/env-schema";
+
 export type VectorStoreProvider = "pgvector" | "upstash" | "none";
 
 type ServerEnv = {
@@ -110,6 +112,7 @@ function logDevelopmentWarnings(config: ServerEnv): void {
 /** Returns the typed server environment (singleton). */
 export function getServerEnv(): ServerEnv {
   if (!cachedEnv) {
+    validateEnvironmentSchema();
     cachedEnv = buildEnv();
     logDevelopmentWarnings(cachedEnv);
   }
