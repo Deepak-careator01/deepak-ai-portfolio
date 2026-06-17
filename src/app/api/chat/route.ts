@@ -91,7 +91,6 @@ export async function POST(request: Request): Promise<Response> {
     try {
       const rag = await retrieveContext(lastUserMessage);
       ragContext = rag.context;
-      console.info(`[/api/chat] RAG hits: ${rag.hits} chunks used`);
     } catch (error) {
       console.error("[/api/chat] RAG retrieval failed, continuing without RAG:", error);
     }
