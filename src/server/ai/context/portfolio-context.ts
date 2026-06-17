@@ -1,28 +1,46 @@
 import "server-only";
 
+import { experience } from "@/content/experience";
 import { profile } from "@/content/profile";
 import { skillCategories } from "@/content/skills";
-import { experience } from "@/content/experience";
-import { getProjects } from "@/lib/projects";
 import { getBlogs } from "@/lib/blog";
+import { getProjectBySlug, getProjects } from "@/lib/projects";
+import type { ProjectStatus } from "@/types/project";
+
+const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
+  completed: "Completed",
+  "in-progress": "In progress (active development)",
+  beta: "Beta",
+  archived: "Archived",
+};
+
+function formatProjectStatus(status: ProjectStatus): string {
+  return PROJECT_STATUS_LABELS[status];
+}
 
 /**
- * Flattens the structured portfolio content into a single text document
- * that can be passed as context to the AI model.
+ * Flattens structured portfolio content into a single text document for AI context.
  *
- * This is intentionally deterministic and easy to regenerate, so the same
- * data can be reused for:
- * - System prompts
- * - RAG ingestion
- * - Agent tools that need a quick, human-readable snapshot
+ * Deterministic and easy to regenerate — reusable for prompts, RAG ingestion,
+ * and future agent tools that need a human-readable snapshot.
+ *
+ * Projects preserve implementation status: technologies in production are listed
+ * separately from planned roadmap items and case study body content.
  */
 export function getPortfolioContext(): string {
   const lines: string[] = [];
 
   lines.push("=== Deepak M — Portfolio Overview ===");
   lines.push("");
+  lines.push("## Implementation Status Guidance");
+  lines.push(
+    "When answering architecture questions, distinguish 'Technologies Used Today' from 'Future Roadmap'.",
+  );
+  lines.push(
+    "Only describe roadmap items as planned — never as currently built unless explicitly under current implementation.",
+  );
+  lines.push("");
 
-  // Profile
   lines.push("## Profile");
   lines.push(`Name: ${profile.name}`);
   lines.push(`Headline: ${profile.headline}`);
@@ -47,7 +65,6 @@ export function getPortfolioContext(): string {
   }
   lines.push("");
 
-  // Skills
   lines.push("## Skills");
   for (const category of skillCategories) {
     lines.push("");
@@ -62,7 +79,6 @@ export function getPortfolioContext(): string {
   }
   lines.push("");
 
-  // Experience
   lines.push("## Experience Timeline");
   for (const role of experience) {
     lines.push("");
@@ -92,23 +108,40 @@ export function getPortfolioContext(): string {
   }
   lines.push("");
 
-  // Projects
   const projects = getProjects();
   lines.push("## Projects");
   for (const project of projects) {
+    const document = getProjectBySlug(project.slug);
+
     lines.push("");
     lines.push(`### ${project.title}`);
     lines.push(`Slug: ${project.slug}`);
     lines.push(`Category: ${project.category}`);
-    lines.push(`Status: ${project.status}`);
+    lines.push(`Project Status: ${formatProjectStatus(project.status)}`);
     lines.push(`Summary: ${project.summary}`);
+
     if (project.technologies.length > 0) {
-      lines.push(`Technologies: ${project.technologies.join(", ")}`);
+      lines.push("Technologies Used Today:");
+      for (const tech of project.technologies) {
+        lines.push(`- ${tech}`);
+      }
+    }
+
+    if (project.technologiesPlanned && project.technologiesPlanned.length > 0) {
+      lines.push("Future Roadmap (planned — not yet implemented):");
+      for (const tech of project.technologiesPlanned) {
+        lines.push(`- ${tech}`);
+      }
+    }
+
+    if (document?.content.trim()) {
+      lines.push("");
+      lines.push("Current Implementation and Case Study Details:");
+      lines.push(document.content.trim());
     }
   }
   lines.push("");
 
-  // Blog posts
   const blogs = getBlogs();
   lines.push("## Blog Articles");
   for (const article of blogs) {
@@ -128,4 +161,3 @@ export function getPortfolioContext(): string {
 
   return lines.join("\n");
 }
-

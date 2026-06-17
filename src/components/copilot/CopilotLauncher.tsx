@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 
+import { ChatPanel } from "@/components/copilot/ChatPanel";
 import { CopilotButton } from "@/components/copilot/CopilotButton";
-import { CopilotPlaceholder } from "@/components/copilot/CopilotPlaceholder";
 
 export function CopilotLauncher() {
   const [open, setOpen] = useState(false);
@@ -11,7 +11,7 @@ export function CopilotLauncher() {
   return (
     <>
       <CopilotButton onClick={() => setOpen(true)} />
-      <CopilotPlaceholder open={open} onClose={() => setOpen(false)} />
+      <ChatPanel open={open} onClose={() => setOpen(false)} />
     </>
   );
 }

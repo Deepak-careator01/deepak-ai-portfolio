@@ -18,6 +18,8 @@ export interface ProjectMeta {
   featured: boolean;
   status: ProjectStatus;
   technologies: string[];
+  /** Optional — technologies planned but not yet in production (AI context accuracy). */
+  technologiesPlanned?: string[];
   category: string;
   /** ISO-like date for sorting, e.g. "2024-06" */
   startDate: string;

@@ -2,18 +2,27 @@
 id: project-ai-portfolio
 slug: ai-portfolio
 title: Deepak AI Portfolio
-summary: An AI-native portfolio with a copilot that understands structured content, designed for RAG ingestion and agentic tooling.
+summary: An AI-native portfolio with a streaming copilot grounded in structured content, with a phased roadmap toward RAG and agentic tooling.
 featured: true
 status: in-progress
 technologies:
-  - Next.js
+  - Next.js 15
   - React 19
   - TypeScript
-  - Tailwind CSS
+  - Bun
+  - Tailwind CSS v4
+  - shadcn/ui
+  - MDX
   - Vercel AI SDK
-  - LangGraph.js
+  - Groq (Llama 3.3 70B)
+technologiesPlanned:
   - PostgreSQL
   - pgvector
+  - Drizzle ORM
+  - RAG retrieval pipeline
+  - LangGraph.js
+  - Tool calling
+  - Persistent conversation memory
 category: AI Application
 startDate: "2024-06"
 links:
@@ -26,66 +35,107 @@ sectionAnchor: projects
 
 Traditional portfolios are static brochures. They look polished, but visitors cannot ask questions, explore architecture decisions interactively, or navigate to the most relevant sections based on intent.
 
-I needed a portfolio that demonstrates modern full-stack engineering while also serving as a foundation for AI-native experiences — chat, retrieval, and eventually agentic copilots with tools and memory.
+I needed a portfolio that demonstrates modern full-stack engineering while also serving as a foundation for AI-native experiences — chat today, with retrieval and agentic tooling planned for later phases.
 
 ## Solution Approach
 
-The solution is a content-driven Next.js application where portfolio data lives in structured TypeScript and MDX files. The UI, SEO metadata, RAG pipeline, and future agent tools all consume the same source of truth.
+The solution is a content-driven Next.js application where portfolio data lives in structured TypeScript and MDX files. The UI, SEO metadata, and current AI copilot all consume the same source of truth.
 
-The roadmap progresses in phases:
+Development is intentionally phased:
 
-1. Premium portfolio UI
-2. Streaming AI chat
-3. RAG over portfolio content
-4. LangGraph agent with tools (e.g. `getProject`, `navigateToSection`)
+1. **Shipped:** Premium portfolio UI, structured content layer, streaming AI chat, copilot UI
+2. **Planned:** RAG over portfolio content, PostgreSQL + pgvector store, LangGraph agent workflows with tools and memory
 
-## System Architecture
+## Current Implementation
 
-The application follows a layered architecture:
+What is **live in production today**:
 
-- **Content layer** — `profile`, `skills`, `experience`, and MDX project case studies
-- **Presentation layer** — React Server Components for sections and case study pages
-- **AI layer (planned)** — API routes, embeddings store, and LangGraph workflows in `server/`
+### Frontend architecture
 
-Content is designed for chunking: each project case study includes explicit sections (problem, architecture, decisions, impact) that map cleanly to retrieval units.
+- **Next.js 15 App Router** with React Server Components for sections and case study pages
+- **React 19**, **TypeScript** (strict), **Tailwind CSS v4**, and **shadcn/ui** for a dark-first, responsive UI
+- **Bun** as the local runtime and package manager
+- Centralized metadata generation for SEO and Open Graph
 
-## Technical Stack
+### Content layer
 
-- **Frontend:** Next.js 15 App Router, React 19, Tailwind CSS v4, shadcn/ui
-- **Runtime:** Bun
-- **AI (planned):** Vercel AI SDK, LangGraph.js, OpenAI or Gemini
-- **Data (planned):** PostgreSQL, Drizzle ORM, pgvector
+- Structured TypeScript content for profile, skills, experience, and contact
+- **MDX** project case studies and blog posts with typed frontmatter
+- Shared content models consumed by both the UI and the AI context pipeline
+- Dedicated loaders in `lib/projects.ts` and `lib/blog.ts` — file I/O stays out of components
 
-## Key Features
+### Current AI integration
 
-- Dark-first premium UI with responsive sections
-- MDX-backed project case studies with dynamic routes
-- Centralized metadata generation for SEO
-- Strict TypeScript content models shared across UI and AI pipelines
-- Copilot placeholder architecture from day one
+- **Vercel AI SDK v6** with `streamText()` and UI message streaming
+- **Groq** provider using **Llama 3.3 70B** for chat responses
+- System prompt plus **portfolio context injection** at request time (static context from structured content — not RAG)
+- `POST /api/chat` streaming API route
+
+### Streaming chat architecture
+
+```
+Copilot UI → /api/chat → streamText() → Groq API
+                ↑
+     system prompt + portfolio context
+```
+
+- Floating copilot launcher with chat panel, message streaming, and suggested prompts
+- `useChat()` from `@ai-sdk/react` on the client; server-only AI code under `src/server/ai/`
+
+**Not implemented yet:** PostgreSQL, pgvector, semantic search, RAG retrieval, LangGraph agents, tool calling, or persistent conversation memory.
+
+## Future AI Roadmap
+
+These are **planned enhancements** — not completed work:
+
+### Phase 3 — Data and retrieval
+
+- **PostgreSQL** for structured storage
+- **pgvector** for embedding-backed semantic search
+- **Drizzle ORM** for schema management
+- Automated ingest script to embed portfolio content
+- **RAG retrieval pipeline** to ground answers in retrieved chunks with citations
+
+### Phase 4 — Agentic copilot
+
+- **LangGraph.js** workflows for multi-step reasoning
+- **Tool calling** — e.g. `getProject`, `getExperience`, `navigateToSection`
+- **Persistent conversation memory** across sessions
+
+Content schemas and folder layout are designed to support this roadmap without rewriting the foundation.
+
+## Key Features (Shipped)
+
+- Dark-first premium UI with responsive sections and scroll-spy navigation
+- MDX-backed project case studies and blog with dynamic routes
+- Strict TypeScript content models shared across UI and AI context
+- Streaming AI copilot with portfolio-grounded responses
 
 ## Challenges
 
 - Keeping MDX content, TypeScript types, and UI components in sync without duplication
-- Designing schemas that work for both human-readable case studies and machine retrieval
-- Maintaining performance while preparing for streaming chat and agent tooling
+- Designing schemas that work for both human-readable case studies and future machine retrieval
+- Maintaining performance while adding streaming chat on top of a static-first foundation
+- Ensuring the AI copilot accurately distinguishes shipped features from roadmap items
 
 ## Engineering Decisions
 
-- **RSC-first:** Minimize client JavaScript; isolate interactivity to theme toggle and future copilot UI
-- **MDX in `content/projects/`:** Rich case studies with version-controlled frontmatter for filtering and agent tools
+- **RSC-first:** Minimize client JavaScript; isolate interactivity to theme toggle and copilot UI
+- **MDX in `content/projects/`:** Rich case studies with version-controlled frontmatter for filtering and future agent tools
 - **Separate loaders in `lib/projects.ts`:** File I/O and MDX compilation stay out of UI components
-- **Phased AI integration:** Ship a strong portfolio foundation before adding RAG and agents
+- **Phased AI integration:** Ship a strong portfolio foundation and streaming chat before adding RAG and agents
+- **Provider abstraction in `server/ai/models.ts`:** Swap LLM providers without changing API routes
 
 ## Performance or Business Impact
 
-- Static generation for project pages via `generateStaticParams`
+- Static generation for project and blog pages via `generateStaticParams`
 - Server-side MDX compilation avoids shipping MDX parsers to the client
 - Positions the portfolio as a living demo of AI engineering capability for recruiters and collaborators
+- Honest architecture documentation builds trust with technical interviewers
 
 ## Future Improvements
 
-- Copilot panel with streaming responses and citations
-- Automated ingest script to embed content into pgvector
+- RAG pipeline with pgvector-backed retrieval and source citations
 - LangGraph tools for project search, experience lookup, and section navigation
+- Conversation persistence and thread management
 - Open Graph image generation per project

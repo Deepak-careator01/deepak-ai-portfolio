@@ -1,35 +1,27 @@
 import "server-only";
 
-import { createOpenAI } from "@ai-sdk/openai";
+import { createGroq } from "@ai-sdk/groq";
 
 /**
  * Centralised AI model configuration.
  *
- * This wraps the Vercel AI SDK + OpenAI provider so that:
- * - Providers and models can be swapped in one place.
- * - API keys are read from environment variables, not hard-coded.
- * - Server-only usage is enforced via the `server-only` import.
- *
- * NOTE:
- * - This module does not validate that an API key is present.
- * - Call sites (e.g. route handlers) should handle missing keys gracefully.
+ * API keys are read from environment variables at runtime — never hard-coded.
+ * Swap providers or model names here without changing API route handlers.
  */
 
-const openai = createOpenAI({
-  // API key is expected to be provided via environment variable at runtime.
-  apiKey: process.env.OPENAI_API_KEY,
+const groq = createGroq({
+  apiKey: process.env.GROQ_API_KEY,
 });
 
-/**
- * Default chat model for the Deepak AI copilot.
- *
- * Chosen to balance capability and cost; can be swapped for a different
- * provider or model name without changing call sites.
- */
-export const deepakAiChatModel = openai.chat("gpt-4.1-mini");
+/** Default chat model for the Deepak AI copilot. */
+export const deepakAiChatModel = groq("llama-3.3-70b-versatile");
 
 export const models = {
-  openai,
+  groq,
   defaultChat: deepakAiChatModel,
 };
 
+/** Returns true when the Groq API key is present (server-only). */
+export function isAiServiceConfigured(): boolean {
+  return Boolean(process.env.GROQ_API_KEY?.trim());
+}
