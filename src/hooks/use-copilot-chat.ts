@@ -2,12 +2,13 @@
 
 import { useChat } from "@ai-sdk/react";
 import type { ChatStatus } from "ai";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   createCopilotChatTransport,
   extractUIMessageText,
 } from "@/lib/copilot/chat-transport";
+import { hasSuccessfulAssistantReply } from "@/lib/copilot/chat-errors";
 import { loadStoredMessages, saveStoredMessages } from "@/lib/copilot/chat-storage";
 import {
   createThread,
@@ -20,6 +21,30 @@ import {
   updateThreadMetadata,
   type CopilotThread,
 } from "@/lib/copilot/thread-manager";
+
+function buildMessagesSignature(
+  messages: Array<{ id: string; role: string; parts: Array<{ type: string; text?: string }> }>,
+): string {
+  return messages
+    .map(
+      (message) =>
+        `${message.id}:${message.role}:${extractUIMessageText(message as Parameters<typeof extractUIMessageText>[0]).length}`,
+    )
+    .join("|");
+}
+
+function threadsAreEqual(left: CopilotThread[], right: CopilotThread[]): boolean {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  return left.every(
+    (thread, index) =>
+      thread.id === right[index]?.id &&
+      thread.title === right[index]?.title &&
+      thread.lastUpdated === right[index]?.lastUpdated,
+  );
+}
 
 export function useCopilotChat() {
   const [activeThreadId, setActiveThreadId] = useState("ssr-placeholder");
@@ -49,11 +74,27 @@ export function useCopilotChat() {
     transport,
   });
 
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
+
+  const messagesSignature = useMemo(() => buildMessagesSignature(messages), [messages]);
+
   const refreshThreads = useCallback(() => {
-    setThreads(getThreads());
+    setThreads((current) => {
+      const next = getThreads();
+      return threadsAreEqual(current, next) ? current : next;
+    });
   }, []);
 
+  const hasHydratedRef = useRef(false);
+  const previousStatusRef = useRef<ChatStatus>("ready");
+
   useEffect(() => {
+    if (hasHydratedRef.current) {
+      return;
+    }
+
+    hasHydratedRef.current = true;
     const threadId = resolveInitialActiveThreadId();
     setActiveThreadId(threadId);
     setThreads(getThreads());
@@ -67,12 +108,16 @@ export function useCopilotChat() {
 
     ensureThreadExists(activeThreadId);
     setActiveThread(activeThreadId);
-    saveStoredMessages(activeThreadId, messages);
+    saveStoredMessages(activeThreadId, messagesRef.current);
+  }, [activeThreadId, messagesSignature]);
 
-    const firstUserMessage = messages.find((message) => message.role === "user");
-    const updates: { lastUpdated: number; title?: string } = {
-      lastUpdated: Date.now(),
-    };
+  useEffect(() => {
+    if (activeThreadId === "ssr-placeholder") {
+      return;
+    }
+
+    const firstUserMessage = messagesRef.current.find((message) => message.role === "user");
+    const updates: { lastUpdated?: number; title?: string } = {};
 
     if (firstUserMessage) {
       updates.title = generateThreadTitle(extractUIMessageText(firstUserMessage));
@@ -80,7 +125,27 @@ export function useCopilotChat() {
 
     updateThreadMetadata(activeThreadId, updates);
     refreshThreads();
-  }, [activeThreadId, messages, refreshThreads]);
+  }, [activeThreadId, messagesSignature, refreshThreads]);
+
+  useEffect(() => {
+    const previousStatus = previousStatusRef.current;
+    previousStatusRef.current = status;
+
+    const finishedStreaming =
+      (previousStatus === "streaming" || previousStatus === "submitted") &&
+      status === "ready";
+
+    if (finishedStreaming) {
+      if (activeThreadId !== "ssr-placeholder") {
+        updateThreadMetadata(activeThreadId, { lastUpdated: Date.now() });
+        refreshThreads();
+      }
+
+      if (error && hasSuccessfulAssistantReply(messagesRef.current)) {
+        clearError();
+      }
+    }
+  }, [activeThreadId, clearError, error, refreshThreads, status]);
 
   const switchThread = useCallback(
     (threadId: string) => {
