@@ -1,8 +1,6 @@
-import "server-only";
-
 import type { PoolClient, QueryResultRow } from "pg";
 
-import { withDbClient } from "@/server/db";
+import { withDbClient } from "@/server/db/client";
 import { EMBEDDING_DIMENSIONS, RAG_EMBEDDINGS_TABLE } from "@/server/db/schema";
 import type {
   PortfolioVectorMetadata,
