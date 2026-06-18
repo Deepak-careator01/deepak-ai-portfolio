@@ -3,6 +3,7 @@ import "server-only";
 import { Pool, type PoolClient } from "pg";
 
 import { env } from "@/server/config/env";
+import { trackAnalyticsEvent } from "@/server/monitoring/analytics";
 
 let pool: Pool | null = null;
 
@@ -58,6 +59,7 @@ export async function withDbClientSafe<T>(
     return await withDbClient(fn);
   } catch (error) {
     console.error("[db] Operation failed:", error);
+    trackAnalyticsEvent("database_error");
     return null;
   }
 }
