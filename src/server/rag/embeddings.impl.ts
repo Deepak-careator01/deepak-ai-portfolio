@@ -4,7 +4,7 @@ import { embed, embedMany, type EmbeddingModel } from "ai";
 import { experience } from "@/content/experience";
 import { getBlogBySlug, getBlogs } from "@/lib/blog.reader";
 import { getProjectBySlug, getProjects } from "@/lib/projects.reader";
-import { env } from "@/server/config/env";
+import { env } from "@/server/config/env.shared";
 
 /** Supported embedding providers — extend when Groq or others add embedding APIs. */
 export type EmbeddingProviderName = "openai";

@@ -1,6 +1,6 @@
 import type { PortfolioChunkMetadata } from "@/server/rag/embeddings.impl";
-import { env } from "@/server/config/env";
-import { isDatabaseConfigured } from "@/server/db";
+import { env } from "@/server/config/env.shared";
+import { isDatabaseConfigured } from "@/server/db/client";
 import { PgVectorStore } from "@/server/rag/vector-stores/pgvector.store";
 
 /** A single vector record ready for persistence. */
