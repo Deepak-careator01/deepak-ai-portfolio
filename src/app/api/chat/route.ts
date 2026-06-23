@@ -30,6 +30,7 @@ import { getMonitoring } from "@/server/monitoring/monitoring";
 import { retrieveContext } from "@/server/rag/retriever";
 import { analyzeInputSafety } from "@/server/security/input-safety";
 import { checkChatRateLimit } from "@/server/security/rate-limit";
+import { env } from "@/server/config/env";
 
 /**
  * POST /api/chat
@@ -143,7 +144,7 @@ export async function POST(request: Request): Promise<Response> {
     requestId,
     ip,
     userAgent,
-    model: "llama-3.3-70b-versatile",
+    model: env.groqModel,
   });
 
   logger.info("request_started");

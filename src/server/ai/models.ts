@@ -16,7 +16,7 @@ const groq = createGroq({
 });
 
 /** Default chat model for the Deepak AI copilot. */
-export const deepakAiChatModel = groq("llama-3.3-70b-versatile");
+export const deepakAiChatModel = groq(env.groqModel);
 
 export const models = {
   groq,
