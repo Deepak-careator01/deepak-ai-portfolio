@@ -1,6 +1,7 @@
 import type { UIMessage } from "ai";
 
 import { extractUIMessageText } from "@/lib/copilot/chat-transport";
+import { MESSAGE_TOO_LONG_ERROR } from "@/lib/copilot/chat-limits";
 
 export type ChatErrorDetails = {
   title: string;
@@ -14,6 +15,20 @@ function matchesAny(text: string, patterns: string[]): boolean {
 /** Maps SDK/network/provider errors to user-friendly copilot messages. */
 export function getChatErrorDetails(error: Error): ChatErrorDetails {
   const message = error.message.toLowerCase();
+
+  if (
+    matchesAny(message, [
+      "cannot exceed",
+      "2000 characters",
+      "message content cannot exceed",
+      "message too long",
+    ])
+  ) {
+    return {
+      title: "Message too long",
+      hint: MESSAGE_TOO_LONG_ERROR,
+    };
+  }
 
   if (
     matchesAny(message, [

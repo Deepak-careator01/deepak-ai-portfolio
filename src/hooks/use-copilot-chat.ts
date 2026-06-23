@@ -248,7 +248,13 @@ export function useCopilotChat() {
   const handleSend = useCallback(
     async (text: string) => {
       clearError();
-      await sendMessage({ text });
+      try {
+        await sendMessage({ text });
+      } catch (caught) {
+        if (process.env.NODE_ENV === "development") {
+          console.error("[copilot] sendMessage failed", caught);
+        }
+      }
     },
     [clearError, sendMessage],
   );
