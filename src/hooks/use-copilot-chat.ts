@@ -10,6 +10,7 @@ import {
 } from "@/lib/copilot/chat-transport";
 import { hasSuccessfulAssistantReply, shouldShowChatErrorBanner } from "@/lib/copilot/chat-errors";
 import { loadStoredMessages, saveStoredMessages } from "@/lib/copilot/chat-storage";
+import { isValidCopilotThreadId } from "@/lib/copilot/thread-id";
 import {
   createThread,
   deleteThread as deleteThreadRecord,
@@ -33,6 +34,17 @@ function buildMessagesSignature(
     .join("|");
 }
 
+function buildFirstUserMessageSignature(
+  messages: Array<{ id: string; role: string; parts: Array<{ type: string; text?: string }> }>,
+): string {
+  const firstUserMessage = messages.find((message) => message.role === "user");
+  if (!firstUserMessage) {
+    return "";
+  }
+
+  return `${firstUserMessage.id}:${extractUIMessageText(firstUserMessage as Parameters<typeof extractUIMessageText>[0]).length}`;
+}
+
 function threadsAreEqual(left: CopilotThread[], right: CopilotThread[]): boolean {
   if (left.length !== right.length) {
     return false;
@@ -50,10 +62,6 @@ export function useCopilotChat() {
   const [activeThreadId, setActiveThreadId] = useState("ssr-placeholder");
   const [threads, setThreads] = useState<CopilotThread[]>([]);
 
-  const initialMessages = useMemo(
-    () => (activeThreadId === "ssr-placeholder" ? [] : loadStoredMessages(activeThreadId)),
-    [activeThreadId],
-  );
   const transport = useMemo(
     () => createCopilotChatTransport({ threadId: activeThreadId }),
     [activeThreadId],
@@ -97,7 +105,6 @@ export function useCopilotChat() {
     clearError,
   } = useChat({
     id: activeThreadId,
-    messages: initialMessages,
     transport,
     onError: onChatError,
     onFinish: onChatFinish,
@@ -106,7 +113,20 @@ export function useCopilotChat() {
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
 
+  const errorRef = useRef(error);
+  errorRef.current = error;
+
+  const clearErrorRef = useRef(clearError);
+  clearErrorRef.current = clearError;
+
+  const setMessagesRef = useRef(setMessages);
+  setMessagesRef.current = setMessages;
+
   const messagesSignature = useMemo(() => buildMessagesSignature(messages), [messages]);
+  const firstUserMessageSignature = useMemo(
+    () => buildFirstUserMessageSignature(messages),
+    [messages],
+  );
 
   const refreshThreads = useCallback(() => {
     setThreads((current) => {
@@ -116,7 +136,15 @@ export function useCopilotChat() {
   }, []);
 
   const hasHydratedRef = useRef(false);
+  const skipNextMessagesLoadRef = useRef(false);
   const previousStatusRef = useRef<ChatStatus>("ready");
+  const handledTerminalTransitionRef = useRef<string | null>(null);
+  const clearedStaleErrorRef = useRef(false);
+  const lastAppliedTitleRef = useRef<string | null>(null);
+
+  const loadMessagesForThread = useCallback((threadId: string) => {
+    setMessagesRef.current(loadStoredMessages(threadId));
+  }, []);
 
   useEffect(() => {
     if (hasHydratedRef.current) {
@@ -125,10 +153,24 @@ export function useCopilotChat() {
 
     hasHydratedRef.current = true;
     const threadId = resolveInitialActiveThreadId();
+    skipNextMessagesLoadRef.current = true;
     setActiveThreadId(threadId);
     setThreads(getThreads());
-    setMessages(loadStoredMessages(threadId));
-  }, [setMessages]);
+    loadMessagesForThread(threadId);
+  }, [loadMessagesForThread]);
+
+  useEffect(() => {
+    if (activeThreadId === "ssr-placeholder") {
+      return;
+    }
+
+    if (skipNextMessagesLoadRef.current) {
+      skipNextMessagesLoadRef.current = false;
+      return;
+    }
+
+    loadMessagesForThread(activeThreadId);
+  }, [activeThreadId, loadMessagesForThread]);
 
   useEffect(() => {
     if (activeThreadId === "ssr-placeholder") {
@@ -145,22 +187,38 @@ export function useCopilotChat() {
       return;
     }
 
+    if (!firstUserMessageSignature) {
+      lastAppliedTitleRef.current = null;
+      return;
+    }
+
     const firstUserMessage = messagesRef.current.find((message) => message.role === "user");
     if (!firstUserMessage) {
       return;
     }
 
     const title = generateThreadTitle(extractUIMessageText(firstUserMessage));
+    if (lastAppliedTitleRef.current === title) {
+      return;
+    }
+
     const existingTitle = getThreads().find((thread) => thread.id === activeThreadId)?.title;
     if (existingTitle === title) {
+      lastAppliedTitleRef.current = title;
       return;
     }
 
     updateThreadMetadata(activeThreadId, { title });
+    lastAppliedTitleRef.current = title;
     refreshThreads();
-  }, [activeThreadId, messagesSignature, refreshThreads]);
+  }, [activeThreadId, firstUserMessageSignature, refreshThreads]);
 
   useEffect(() => {
+    if (status === "streaming" || status === "submitted") {
+      clearedStaleErrorRef.current = false;
+      handledTerminalTransitionRef.current = null;
+    }
+
     const previousStatus = previousStatusRef.current;
     previousStatusRef.current = status;
 
@@ -172,17 +230,25 @@ export function useCopilotChat() {
       return;
     }
 
+    const transitionKey = `${activeThreadId}:${previousStatus}->${status}`;
+    if (handledTerminalTransitionRef.current === transitionKey) {
+      return;
+    }
+    handledTerminalTransitionRef.current = transitionKey;
+
     updateThreadMetadata(activeThreadId, { lastUpdated: Date.now() });
     refreshThreads();
 
     if (
       status === "error" &&
-      error &&
-      hasSuccessfulAssistantReply(messagesRef.current)
+      errorRef.current &&
+      hasSuccessfulAssistantReply(messagesRef.current) &&
+      !clearedStaleErrorRef.current
     ) {
-      clearError();
+      clearedStaleErrorRef.current = true;
+      clearErrorRef.current();
     }
-  }, [activeThreadId, clearError, error, refreshThreads, status]);
+  }, [activeThreadId, refreshThreads, status]);
 
   const switchThread = useCallback(
     (threadId: string) => {
@@ -192,22 +258,26 @@ export function useCopilotChat() {
 
       stop();
       clearError();
+      skipNextMessagesLoadRef.current = true;
       setActiveThread(threadId);
       setActiveThreadId(threadId);
-      setMessages(loadStoredMessages(threadId));
+      loadMessagesForThread(threadId);
+      lastAppliedTitleRef.current = null;
       refreshThreads();
     },
-    [activeThreadId, clearError, refreshThreads, setMessages, stop],
+    [activeThreadId, clearError, loadMessagesForThread, refreshThreads, stop],
   );
 
   const createNewChat = useCallback(() => {
     stop();
     clearError();
     const thread = createThread();
+    skipNextMessagesLoadRef.current = true;
     setActiveThreadId(thread.id);
-    setMessages([]);
+    setMessagesRef.current([]);
+    lastAppliedTitleRef.current = null;
     refreshThreads();
-  }, [clearError, refreshThreads, setMessages, stop]);
+  }, [clearError, refreshThreads, stop]);
 
   const deleteThread = useCallback(
     (threadId: string) => {
@@ -220,14 +290,16 @@ export function useCopilotChat() {
           switchThread(remaining[0].id);
         } else {
           const thread = createThread();
+          skipNextMessagesLoadRef.current = true;
           setActiveThreadId(thread.id);
-          setMessages([]);
+          setMessagesRef.current([]);
+          lastAppliedTitleRef.current = null;
         }
       }
 
       refreshThreads();
     },
-    [activeThreadId, refreshThreads, setMessages, switchThread],
+    [activeThreadId, refreshThreads, switchThread],
   );
 
   const retryLastResponse = useCallback(async () => {
@@ -247,16 +319,14 @@ export function useCopilotChat() {
 
   const handleSend = useCallback(
     async (text: string) => {
-      clearError();
-      try {
-        await sendMessage({ text });
-      } catch (caught) {
-        if (process.env.NODE_ENV === "development") {
-          console.error("[copilot] sendMessage failed", caught);
-        }
+      if (!isValidCopilotThreadId(activeThreadId)) {
+        return;
       }
+
+      clearError();
+      await sendMessage({ text });
     },
-    [clearError, sendMessage],
+    [activeThreadId, clearError, sendMessage],
   );
 
   const abortStream = useCallback(() => {
@@ -287,6 +357,7 @@ export function useCopilotChat() {
     clearError,
     showErrorBanner: shouldShowChatErrorBanner(messages, error),
     hasMessages: messages.length > 0,
+    isChatReady: isValidCopilotThreadId(activeThreadId),
   };
 }
 

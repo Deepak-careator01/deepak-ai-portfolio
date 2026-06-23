@@ -139,3 +139,27 @@
     @apply bg-primary/20 text-foreground;
   }
 }
+
+@layer utilities {
+  .copilot-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklch, var(--muted-foreground) 30%, transparent) transparent;
+  }
+
+  .copilot-scrollbar::-webkit-scrollbar {
+    width: 5px;
+  }
+
+  .copilot-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .copilot-scrollbar::-webkit-scrollbar-thumb {
+    border-radius: 9999px;
+    background: color-mix(in oklch, var(--muted-foreground) 30%, transparent);
+  }
+
+  .copilot-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in oklch, var(--muted-foreground) 45%, transparent);
+  }
+}

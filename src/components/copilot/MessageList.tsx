@@ -97,50 +97,52 @@ export function MessageList({
     if (hasNewMessages || isLoading) {
       setShowNewMessages(true);
     }
-  }, [messages, lastMessageSignature, status, isLoading, scrollToBottom]);
+  }, [lastMessageSignature, messages.length, status, isLoading, scrollToBottom]);
 
   return (
-    <div className={cn("relative flex-1 min-h-0", className)}>
+    <div className={cn("relative min-h-0 flex-1", className)}>
       <div
         ref={containerRef}
-        className="h-full overflow-y-auto px-4 py-4"
+        className="copilot-scrollbar h-full overflow-y-auto overscroll-contain px-4 py-4 sm:px-6"
         role="log"
         aria-live="polite"
         aria-relevant="additions text"
         aria-busy={isLoading}
       >
-        {visibleMessages.length === 0 && !isLoading ? (
-          <EmptyState onSuggestionClick={onSuggestionClick} />
-        ) : (
-          <div className="flex flex-col gap-5">
-            {visibleMessages.map((message, index) => {
-              const isLast = index === visibleMessages.length - 1;
-              const isEmptyAssistant =
-                message.role === "assistant" && !extractUIMessageText(message).trim();
+        <div className="mx-auto w-full max-w-2xl">
+          {visibleMessages.length === 0 && !isLoading ? (
+            <EmptyState onSuggestionClick={onSuggestionClick} />
+          ) : (
+            <div className="flex flex-col gap-5 sm:gap-6">
+              {visibleMessages.map((message, index) => {
+                const isLast = index === visibleMessages.length - 1;
+                const isEmptyAssistant =
+                  message.role === "assistant" && !extractUIMessageText(message).trim();
 
-              if (isLast && isEmptyAssistant && isLoading) {
-                return null;
-              }
+                if (isLast && isEmptyAssistant && isLoading) {
+                  return null;
+                }
 
-              const isStreamingAssistant =
-                isLoading && isLast && message.role === "assistant" && !isEmptyAssistant;
+                const isStreamingAssistant =
+                  isLoading && isLast && message.role === "assistant" && !isEmptyAssistant;
 
-              return (
-                <MessageBubble
-                  key={message.id}
-                  message={message}
-                  isStreaming={isStreamingAssistant}
-                  onRegenerate={
-                    !isLoading && isLast && message.role === "assistant"
-                      ? onRegenerate
-                      : undefined
-                  }
-                />
-              );
-            })}
-            {showTypingIndicator ? <TypingIndicator /> : null}
-          </div>
-        )}
+                return (
+                  <MessageBubble
+                    key={message.id}
+                    message={message}
+                    isStreaming={isStreamingAssistant}
+                    onRegenerate={
+                      !isLoading && isLast && message.role === "assistant"
+                        ? onRegenerate
+                        : undefined
+                    }
+                  />
+                );
+              })}
+              {showTypingIndicator ? <TypingIndicator /> : null}
+            </div>
+          )}
+        </div>
 
         <div ref={bottomRef} aria-hidden className="h-px" />
       </div>
@@ -151,14 +153,14 @@ export function MessageList({
             type="button"
             size="sm"
             variant="secondary"
-            className="pointer-events-auto h-8 gap-1.5 rounded-full px-3 shadow-md"
+            className="pointer-events-auto h-7 gap-1 rounded-full px-2.5 text-xs shadow-sm"
             onClick={() => {
               scrollToBottom("smooth");
               isPinnedToBottomRef.current = true;
               setShowNewMessages(false);
             }}
           >
-            <ArrowDown className="size-3.5" aria-hidden />
+            <ArrowDown className="size-3" aria-hidden />
             New messages
           </Button>
         </div>

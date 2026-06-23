@@ -12,48 +12,48 @@ type MarkdownContentProps = {
 
 export function MarkdownContent({ content, className }: MarkdownContentProps) {
   return (
-    <div className={cn("prose-copilot", className)}>
+    <div className={cn("prose-copilot text-sm text-foreground/95", className)}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
         h1: ({ className: headingClassName, ...props }: ComponentPropsWithoutRef<"h1">) => (
           <h1
-            className={cn("mt-4 mb-2 text-base font-semibold text-foreground", headingClassName)}
+            className={cn("mt-5 mb-2 text-base font-semibold tracking-tight text-foreground first:mt-0", headingClassName)}
             {...props}
           />
         ),
         h2: ({ className: headingClassName, ...props }: ComponentPropsWithoutRef<"h2">) => (
           <h2
-            className={cn("mt-4 mb-2 text-sm font-semibold text-foreground", headingClassName)}
+            className={cn("mt-5 mb-2 text-sm font-semibold tracking-tight text-foreground first:mt-0", headingClassName)}
             {...props}
           />
         ),
         h3: ({ className: headingClassName, ...props }: ComponentPropsWithoutRef<"h3">) => (
           <h3
-            className={cn("mt-3 mb-1.5 text-sm font-semibold text-foreground", headingClassName)}
+            className={cn("mt-4 mb-1.5 text-sm font-semibold text-foreground first:mt-0", headingClassName)}
             {...props}
           />
         ),
         p: ({ className: paragraphClassName, ...props }: ComponentPropsWithoutRef<"p">) => (
           <p
-            className={cn("mb-2 text-sm leading-relaxed last:mb-0", paragraphClassName)}
+            className={cn("mb-3 text-sm leading-[1.7] last:mb-0", paragraphClassName)}
             {...props}
           />
         ),
         ul: ({ className: listClassName, ...props }: ComponentPropsWithoutRef<"ul">) => (
           <ul
-            className={cn("mb-2 list-disc space-y-1 pl-5 text-sm last:mb-0", listClassName)}
+            className={cn("mb-3 list-disc space-y-1.5 pl-5 text-sm last:mb-0", listClassName)}
             {...props}
           />
         ),
         ol: ({ className: listClassName, ...props }: ComponentPropsWithoutRef<"ol">) => (
           <ol
-            className={cn("mb-2 list-decimal space-y-1 pl-5 text-sm last:mb-0", listClassName)}
+            className={cn("mb-3 list-decimal space-y-1.5 pl-5 text-sm last:mb-0", listClassName)}
             {...props}
           />
         ),
         li: ({ className: itemClassName, ...props }: ComponentPropsWithoutRef<"li">) => (
-          <li className={cn("leading-relaxed", itemClassName)} {...props} />
+          <li className={cn("leading-[1.65]", itemClassName)} {...props} />
         ),
         a: ({ className: anchorClassName, href, ...props }: ComponentPropsWithoutRef<"a">) => {
           const isExternal = href?.startsWith("http");
@@ -65,7 +65,7 @@ export function MarkdownContent({ content, className }: MarkdownContentProps) {
                 target="_blank"
                 rel="noopener noreferrer"
                 className={cn(
-                  "font-medium text-foreground underline underline-offset-4",
+                  "font-medium text-foreground underline underline-offset-2 hover:text-foreground/80",
                   anchorClassName,
                 )}
                 {...props}
@@ -77,7 +77,7 @@ export function MarkdownContent({ content, className }: MarkdownContentProps) {
             <Link
               href={href ?? "#"}
               className={cn(
-                "font-medium text-foreground underline underline-offset-4",
+                "font-medium text-foreground underline underline-offset-2 hover:text-foreground/80",
                 anchorClassName,
               )}
               {...props}
@@ -90,7 +90,7 @@ export function MarkdownContent({ content, className }: MarkdownContentProps) {
           if (isBlock) {
             return (
               <code
-                className={cn("font-mono text-xs text-foreground", codeClassName)}
+                className={cn("font-mono text-[13px] text-foreground", codeClassName)}
                 {...props}
               >
                 {children}
@@ -101,7 +101,7 @@ export function MarkdownContent({ content, className }: MarkdownContentProps) {
           return (
             <code
               className={cn(
-                "rounded-md border border-border/60 bg-muted/50 px-1 py-0.5 font-mono text-xs",
+                "rounded border border-border bg-muted/60 px-1.5 py-0.5 font-mono text-[13px]",
                 codeClassName,
               )}
               {...props}
@@ -113,8 +113,17 @@ export function MarkdownContent({ content, className }: MarkdownContentProps) {
         pre: ({ className: preClassName, ...props }: ComponentPropsWithoutRef<"pre">) => (
           <pre
             className={cn(
-              "my-2 overflow-x-auto rounded-lg border border-border/60 bg-muted/30 p-3 text-xs",
+              "my-3 overflow-x-auto rounded-md border border-border bg-muted/40 p-3.5 text-[13px] leading-relaxed",
               preClassName,
+            )}
+            {...props}
+          />
+        ),
+        blockquote: ({ className: quoteClassName, ...props }: ComponentPropsWithoutRef<"blockquote">) => (
+          <blockquote
+            className={cn(
+              "my-3 border-l-2 border-border pl-4 text-muted-foreground",
+              quoteClassName,
             )}
             {...props}
           />

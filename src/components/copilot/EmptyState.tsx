@@ -1,11 +1,10 @@
-import { Sparkles } from "lucide-react";
-
 import { cn } from "@/lib/utils";
 
 const SUGGESTED_PROMPTS = [
-  "What projects has Deepak built?",
-  "Explain AI Portfolio architecture",
-  "What technologies does he use?",
+  { label: "Explore my projects", prompt: "Explore my projects" },
+  { label: "Technical expertise", prompt: "What is your technical expertise?" },
+  { label: "System design approach", prompt: "What is your system design approach?" },
+  { label: "Professional experience", prompt: "Tell me about your professional experience" },
 ] as const;
 
 type EmptyStateProps = {
@@ -15,32 +14,31 @@ type EmptyStateProps = {
 
 export function EmptyState({ onSuggestionClick, className }: EmptyStateProps) {
   return (
-    <div className={cn("flex flex-col items-center px-2 py-8 text-center", className)}>
-      <div className="mb-5 flex size-14 items-center justify-center rounded-2xl border border-border/60 bg-gradient-to-b from-muted/50 to-muted/20 shadow-sm">
-        <Sparkles className="size-6 text-foreground/80" aria-hidden />
-      </div>
+    <div
+      className={cn(
+        "flex min-h-[min(280px,45vh)] flex-col items-center justify-center px-2 py-8 text-center",
+        className,
+      )}
+    >
+      <p className="text-sm text-muted-foreground">What would you like to know?</p>
 
-      <h3 className="text-lg font-semibold tracking-tight text-foreground">
-        Hi, I&apos;m Deepak AI
-      </h3>
-      <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
-        Your guide to my portfolio — projects, experience, blog posts, and the tech behind this
-        site. Pick a prompt below or ask anything.
-      </p>
-
-      <ul className="mt-8 flex w-full max-w-sm flex-col gap-2.5" aria-label="Suggested prompts">
-        {SUGGESTED_PROMPTS.map((prompt) => (
-          <li key={prompt}>
-            <button
-              type="button"
-              onClick={() => onSuggestionClick(prompt)}
-              className="w-full rounded-xl border border-border/60 bg-background px-4 py-3.5 text-left text-sm text-foreground shadow-sm transition-all hover:border-border hover:bg-muted/30 hover:shadow focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-            >
-              {prompt}
-            </button>
-          </li>
+      <div className="mt-5 flex max-w-sm flex-wrap justify-center gap-2" role="list" aria-label="Suggested prompts">
+        {SUGGESTED_PROMPTS.map((item) => (
+          <button
+            key={item.prompt}
+            type="button"
+            role="listitem"
+            onClick={() => onSuggestionClick(item.prompt)}
+            className={cn(
+              "rounded-full border border-border/50 bg-background/50 px-3 py-1.5 text-xs text-foreground",
+              "transition-colors duration-150 hover:bg-muted/60",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40",
+            )}
+          >
+            {item.label}
+          </button>
         ))}
-      </ul>
+      </div>
     </div>
   );
 }
