@@ -8,38 +8,54 @@ export const CHAT_LIMITS = {
   maxTotalChars: 20_000,
 } as const;
 
-const chatMessageSchema = z.object({
+/** Payload-stage message schema — structure only, no character limits. */
+const chatPayloadMessageSchema = z.object({
   role: z.enum(["user", "assistant"]),
   content: z
     .string()
     .trim()
-    .min(1, "Message content cannot be empty")
-    .max(
-      CHAT_LIMITS.maxMessageChars,
-      `Message content cannot exceed ${CHAT_LIMITS.maxMessageChars} characters`,
-    ),
+    .min(1, "Message content cannot be empty"),
 });
 
-export const chatRequestSchema = z.object({
+/** Validates incoming client payload before context window trimming. */
+export const chatRequestPayloadSchema = z.object({
   messages: z
-    .array(chatMessageSchema)
+    .array(chatPayloadMessageSchema)
     .min(1, "At least one message is required")
     .max(CHAT_LIMITS.maxMessages, `Cannot send more than ${CHAT_LIMITS.maxMessages} messages`),
   threadId: z.string().uuid("Invalid thread ID format").optional(),
 });
 
-export type ChatMessage = z.infer<typeof chatMessageSchema>;
-export type ChatRequest = z.infer<typeof chatRequestSchema>;
+/** @deprecated Use chatRequestPayloadSchema — kept for compatibility. */
+export const chatRequestSchema = chatRequestPayloadSchema;
 
-/** Validates total conversation character budget. */
-export function validateConversationSize(messages: ChatMessage[]): string | null {
-  const totalChars = messages.reduce((sum, message) => sum + message.content.length, 0);
+export type ChatMessage = z.infer<typeof chatPayloadMessageSchema>;
+export type ChatRequest = z.infer<typeof chatRequestPayloadSchema>;
 
+/** Returns total character count across message contents. */
+export function countConversationCharacters(messages: ChatMessage[]): number {
+  return messages.reduce((sum, message) => sum + message.content.length, 0);
+}
+
+/** Validates trimmed LLM context against per-message and total character limits. */
+export function validateLlmContext(messages: ChatMessage[]): string | null {
+  for (const message of messages) {
+    if (message.content.length > CHAT_LIMITS.maxMessageChars) {
+      return `Message content cannot exceed ${CHAT_LIMITS.maxMessageChars} characters`;
+    }
+  }
+
+  const totalChars = countConversationCharacters(messages);
   if (totalChars > CHAT_LIMITS.maxTotalChars) {
     return `Total conversation size cannot exceed ${CHAT_LIMITS.maxTotalChars} characters`;
   }
 
   return null;
+}
+
+/** @deprecated Use validateLlmContext on trimmed messages after context windowing. */
+export function validateConversationSize(messages: ChatMessage[]): string | null {
+  return validateLlmContext(messages);
 }
 
 /** Returns the last user message content, if any. */
