@@ -7,6 +7,7 @@ import {
   getLastUserMessage,
   validateConversationSize,
 } from "@/server/chat/request-validation";
+import { trimChatHistoryForModel } from "@/server/chat/context-window";
 import {
   deepakAiChatModel,
   getDeepakAiSystemInstruction,
@@ -192,6 +193,7 @@ export async function POST(request: Request): Promise<Response> {
     return badRequest(sizeError, requestId);
   }
 
+  const messagesForLlm = trimChatHistoryForModel(messages, env.maxChatHistoryMessages);
   const lastUserMessage = getLastUserMessage(messages);
   const inputSafety = lastUserMessage ? analyzeInputSafety(lastUserMessage) : null;
 
@@ -203,7 +205,8 @@ export async function POST(request: Request): Promise<Response> {
 
   logger.info("request_validated", {
     threadId,
-    metadata: { messageCount: messages.length },
+    inputMessages: messages.length,
+    messagesSentToLLM: messagesForLlm.length,
   });
 
   trackAnalyticsEvent("chat_started", {
@@ -262,6 +265,10 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   try {
+    const llmStartedAt = Date.now();
+    let firstTokenLogged = false;
+    let timeToFirstTokenMs: number | undefined;
+
     const result = streamText({
       model: deepakAiChatModel,
       system: buildSystemInstruction(
@@ -269,8 +276,23 @@ export async function POST(request: Request): Promise<Response> {
         memoryContext,
         inputSafety?.safetyContext ?? "",
       ),
-      messages,
-      onFinish: async ({ text }) => {
+      messages: messagesForLlm,
+      maxOutputTokens: env.llmMaxOutputTokens,
+      onChunk: ({ chunk }) => {
+        if (chunk.type === "text-delta" && !firstTokenLogged) {
+          firstTokenLogged = true;
+          timeToFirstTokenMs = Date.now() - llmStartedAt;
+          logger.info("llm_first_token", {
+            latencyMs: Date.now() - startedAt,
+            timeToFirstTokenMs,
+            inputMessages: messages.length,
+            messagesSentToLLM: messagesForLlm.length,
+          });
+        }
+      },
+      onFinish: async ({ text, totalUsage }) => {
+        const llmGenerationMs = Date.now() - llmStartedAt;
+
         if (threadId && text.trim()) {
           try {
             await saveMessage(threadId, { role: "assistant", content: text });
@@ -284,9 +306,16 @@ export async function POST(request: Request): Promise<Response> {
         logger.info("llm_response_completed", {
           threadId,
           latencyMs: Date.now() - startedAt,
+          llmGenerationMs,
+          timeToFirstTokenMs,
           ragHits,
           memoryUsed,
           status: "success",
+          inputMessages: messages.length,
+          messagesSentToLLM: messagesForLlm.length,
+          inputTokens: totalUsage.inputTokens,
+          completionTokens: totalUsage.outputTokens,
+          totalTokens: totalUsage.totalTokens,
         });
 
         trackAnalyticsEvent("chat_completed", {
@@ -297,6 +326,8 @@ export async function POST(request: Request): Promise<Response> {
         getMonitoring().performance.trackDuration("chat.request", Date.now() - startedAt, {
           ragHits,
           memoryUsed,
+          messagesSentToLLM: messagesForLlm.length,
+          completionTokens: totalUsage.outputTokens,
         });
       },
     });

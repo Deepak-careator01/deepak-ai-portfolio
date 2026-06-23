@@ -7,6 +7,8 @@ export const REQUIRED_ENV_VARS = ["GROQ_API_KEY"] as const;
 
 export const OPTIONAL_ENV_VARS = [
   "GROQ_MODEL",
+  "MAX_CHAT_HISTORY_MESSAGES",
+  "LLM_MAX_OUTPUT_TOKENS",
   "DATABASE_URL",
   "OPENAI_API_KEY",
   "EMBEDDING_API_KEY",
@@ -40,7 +42,13 @@ export function validateEnvironmentSchema(): void {
     );
   }
 
-  for (const name of ["RATE_LIMIT_MAX_REQUESTS", "RATE_LIMIT_WINDOW_MS", "RAG_TOP_K"]) {
+  for (const name of [
+    "RATE_LIMIT_MAX_REQUESTS",
+    "RATE_LIMIT_WINDOW_MS",
+    "RAG_TOP_K",
+    "MAX_CHAT_HISTORY_MESSAGES",
+    "LLM_MAX_OUTPUT_TOKENS",
+  ]) {
     const value = process.env[name];
     if (value !== undefined && value.trim() !== "" && Number(value) <= 0) {
       throw new Error(`${name} must be a positive number when set.`);

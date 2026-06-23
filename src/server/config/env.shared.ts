@@ -3,10 +3,14 @@ import { validateEnvironmentSchema } from "@/server/config/env-schema";
 export type VectorStoreProvider = "pgvector" | "upstash" | "none";
 
 export const DEFAULT_GROQ_MODEL = "llama-3.1-8b-instant";
+export const DEFAULT_MAX_CHAT_HISTORY_MESSAGES = 10;
+export const DEFAULT_LLM_MAX_OUTPUT_TOKENS = 700;
 
 type ServerEnv = {
   groqApiKey: string | undefined;
   groqModel: string;
+  maxChatHistoryMessages: number;
+  llmMaxOutputTokens: number;
   databaseUrl: string | undefined;
   openAiApiKey: string | undefined;
   embeddingApiKey: string | undefined;
@@ -66,6 +70,10 @@ function buildEnv(): ServerEnv {
   return {
     groqApiKey,
     groqModel: readOptional("GROQ_MODEL") ?? DEFAULT_GROQ_MODEL,
+    maxChatHistoryMessages:
+      readPositiveInt("MAX_CHAT_HISTORY_MESSAGES") ?? DEFAULT_MAX_CHAT_HISTORY_MESSAGES,
+    llmMaxOutputTokens:
+      readPositiveInt("LLM_MAX_OUTPUT_TOKENS") ?? DEFAULT_LLM_MAX_OUTPUT_TOKENS,
     databaseUrl,
     openAiApiKey,
     embeddingApiKey,
@@ -129,6 +137,12 @@ export const env = {
   },
   get groqModel(): string {
     return getServerEnv().groqModel;
+  },
+  get maxChatHistoryMessages(): number {
+    return getServerEnv().maxChatHistoryMessages;
+  },
+  get llmMaxOutputTokens(): number {
+    return getServerEnv().llmMaxOutputTokens;
   },
   get databaseUrl(): string | undefined {
     return getServerEnv().databaseUrl;
