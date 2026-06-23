@@ -19,6 +19,13 @@ export type ChatRequestLogEvent = RequestLogContext & {
   memoryUsed?: boolean;
   status?: string;
   error?: string;
+  inputMessages?: number;
+  messagesSentToLLM?: number;
+  timeToFirstTokenMs?: number;
+  llmGenerationMs?: number;
+  inputTokens?: number;
+  completionTokens?: number;
+  totalTokens?: number;
   metadata?: Record<string, unknown>;
 };
 
