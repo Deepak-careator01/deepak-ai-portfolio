@@ -59,6 +59,33 @@ export function useCopilotChat() {
     [activeThreadId],
   );
 
+  const onChatError = useCallback((streamError: Error) => {
+    if (process.env.NODE_ENV === "development") {
+      console.error("[copilot] COPILOT ERROR", streamError);
+    }
+  }, []);
+
+  const onChatFinish = useCallback(
+    ({
+      isError,
+      isAbort,
+      isDisconnect,
+    }: {
+      isError: boolean;
+      isAbort: boolean;
+      isDisconnect: boolean;
+    }) => {
+      if (process.env.NODE_ENV === "development") {
+        console.log("[copilot] STREAM FINISHED", {
+          status: isError ? "error" : "success",
+          isAbort,
+          isDisconnect,
+        });
+      }
+    },
+    [],
+  );
+
   const {
     messages,
     sendMessage,
@@ -72,20 +99,8 @@ export function useCopilotChat() {
     id: activeThreadId,
     messages: initialMessages,
     transport,
-    onError: (streamError) => {
-      if (process.env.NODE_ENV === "development") {
-        console.error("[copilot] COPILOT ERROR", streamError);
-      }
-    },
-    onFinish: ({ isError, isAbort, isDisconnect }) => {
-      if (process.env.NODE_ENV === "development") {
-        console.log("[copilot] STREAM FINISHED", {
-          status: isError ? "error" : "success",
-          isAbort,
-          isDisconnect,
-        });
-      }
-    },
+    onError: onChatError,
+    onFinish: onChatFinish,
   });
 
   const messagesRef = useRef(messages);
@@ -131,13 +146,17 @@ export function useCopilotChat() {
     }
 
     const firstUserMessage = messagesRef.current.find((message) => message.role === "user");
-    const updates: { lastUpdated?: number; title?: string } = {};
-
-    if (firstUserMessage) {
-      updates.title = generateThreadTitle(extractUIMessageText(firstUserMessage));
+    if (!firstUserMessage) {
+      return;
     }
 
-    updateThreadMetadata(activeThreadId, updates);
+    const title = generateThreadTitle(extractUIMessageText(firstUserMessage));
+    const existingTitle = getThreads().find((thread) => thread.id === activeThreadId)?.title;
+    if (existingTitle === title) {
+      return;
+    }
+
+    updateThreadMetadata(activeThreadId, { title });
     refreshThreads();
   }, [activeThreadId, messagesSignature, refreshThreads]);
 
@@ -149,17 +168,21 @@ export function useCopilotChat() {
       (previousStatus === "streaming" || previousStatus === "submitted") &&
       (status === "ready" || status === "error");
 
-    if (reachedTerminalState && activeThreadId !== "ssr-placeholder") {
-      updateThreadMetadata(activeThreadId, { lastUpdated: Date.now() });
-      refreshThreads();
+    if (!reachedTerminalState || activeThreadId === "ssr-placeholder") {
+      return;
     }
-  }, [activeThreadId, refreshThreads, status]);
 
-  useEffect(() => {
-    if (status === "error" && error && hasSuccessfulAssistantReply(messages)) {
+    updateThreadMetadata(activeThreadId, { lastUpdated: Date.now() });
+    refreshThreads();
+
+    if (
+      status === "error" &&
+      error &&
+      hasSuccessfulAssistantReply(messagesRef.current)
+    ) {
       clearError();
     }
-  }, [clearError, error, messages, status]);
+  }, [activeThreadId, clearError, error, refreshThreads, status]);
 
   const switchThread = useCallback(
     (threadId: string) => {

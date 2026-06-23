@@ -2,8 +2,11 @@ import { validateEnvironmentSchema } from "@/server/config/env-schema";
 
 export type VectorStoreProvider = "pgvector" | "upstash" | "none";
 
+export const DEFAULT_GROQ_MODEL = "llama-3.1-8b-instant";
+
 type ServerEnv = {
   groqApiKey: string | undefined;
+  groqModel: string;
   databaseUrl: string | undefined;
   openAiApiKey: string | undefined;
   embeddingApiKey: string | undefined;
@@ -62,6 +65,7 @@ function buildEnv(): ServerEnv {
 
   return {
     groqApiKey,
+    groqModel: readOptional("GROQ_MODEL") ?? DEFAULT_GROQ_MODEL,
     databaseUrl,
     openAiApiKey,
     embeddingApiKey,
@@ -122,6 +126,9 @@ export function getServerEnv(): ServerEnv {
 export const env = {
   get groqApiKey(): string | undefined {
     return getServerEnv().groqApiKey;
+  },
+  get groqModel(): string {
+    return getServerEnv().groqModel;
   },
   get databaseUrl(): string | undefined {
     return getServerEnv().databaseUrl;

@@ -6,6 +6,7 @@
 export const REQUIRED_ENV_VARS = ["GROQ_API_KEY"] as const;
 
 export const OPTIONAL_ENV_VARS = [
+  "GROQ_MODEL",
   "DATABASE_URL",
   "OPENAI_API_KEY",
   "EMBEDDING_API_KEY",
