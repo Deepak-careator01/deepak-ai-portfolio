@@ -25,11 +25,13 @@ export function getChatErrorDetails(error: Error): ChatErrorDetails {
       "tokens per day",
       "tpd",
       "try again in",
+      "rate_limit_exceeded",
+      "limit exceeded",
     ])
   ) {
     return {
       title: "AI usage limit reached",
-      hint: "The provider quota is temporarily exhausted. Wait a few minutes and try again.",
+      hint: "The AI service has reached its temporary usage limit. Please try again later.",
     };
   }
 
@@ -84,4 +86,16 @@ export function hasSuccessfulAssistantReply(messages: UIMessage[]): boolean {
   }
 
   return extractUIMessageText(lastMessage).trim().length > 0;
+}
+
+/** Shows the global banner only when the latest turn has no completed assistant reply. */
+export function shouldShowChatErrorBanner(
+  messages: UIMessage[],
+  error: Error | undefined,
+): boolean {
+  if (!error) {
+    return false;
+  }
+
+  return !hasSuccessfulAssistantReply(messages);
 }

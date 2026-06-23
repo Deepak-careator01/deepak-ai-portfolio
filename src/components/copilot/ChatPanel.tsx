@@ -36,6 +36,7 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
     regenerate,
     abortStream,
     clearError,
+    showErrorBanner,
   } = useCopilotChat();
 
   useEffect(() => {
@@ -134,7 +135,7 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
           </Button>
         </header>
 
-        {error ? (
+        {showErrorBanner && error ? (
           <ChatErrorBanner
             error={error}
             onRetry={() => {

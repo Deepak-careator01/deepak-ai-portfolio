@@ -8,7 +8,7 @@ import {
   createCopilotChatTransport,
   extractUIMessageText,
 } from "@/lib/copilot/chat-transport";
-import { hasSuccessfulAssistantReply } from "@/lib/copilot/chat-errors";
+import { hasSuccessfulAssistantReply, shouldShowChatErrorBanner } from "@/lib/copilot/chat-errors";
 import { loadStoredMessages, saveStoredMessages } from "@/lib/copilot/chat-storage";
 import {
   createThread,
@@ -72,6 +72,20 @@ export function useCopilotChat() {
     id: activeThreadId,
     messages: initialMessages,
     transport,
+    onError: (streamError) => {
+      if (process.env.NODE_ENV === "development") {
+        console.error("[copilot] COPILOT ERROR", streamError);
+      }
+    },
+    onFinish: ({ isError, isAbort, isDisconnect }) => {
+      if (process.env.NODE_ENV === "development") {
+        console.log("[copilot] STREAM FINISHED", {
+          status: isError ? "error" : "success",
+          isAbort,
+          isDisconnect,
+        });
+      }
+    },
   });
 
   const messagesRef = useRef(messages);
@@ -131,21 +145,21 @@ export function useCopilotChat() {
     const previousStatus = previousStatusRef.current;
     previousStatusRef.current = status;
 
-    const finishedStreaming =
+    const reachedTerminalState =
       (previousStatus === "streaming" || previousStatus === "submitted") &&
-      status === "ready";
+      (status === "ready" || status === "error");
 
-    if (finishedStreaming) {
-      if (activeThreadId !== "ssr-placeholder") {
-        updateThreadMetadata(activeThreadId, { lastUpdated: Date.now() });
-        refreshThreads();
-      }
-
-      if (error && hasSuccessfulAssistantReply(messagesRef.current)) {
-        clearError();
-      }
+    if (reachedTerminalState && activeThreadId !== "ssr-placeholder") {
+      updateThreadMetadata(activeThreadId, { lastUpdated: Date.now() });
+      refreshThreads();
     }
-  }, [activeThreadId, clearError, error, refreshThreads, status]);
+  }, [activeThreadId, refreshThreads, status]);
+
+  useEffect(() => {
+    if (status === "error" && error && hasSuccessfulAssistantReply(messages)) {
+      clearError();
+    }
+  }, [clearError, error, messages, status]);
 
   const switchThread = useCallback(
     (threadId: string) => {
@@ -242,6 +256,7 @@ export function useCopilotChat() {
     regenerate: handleRegenerate,
     abortStream,
     clearError,
+    showErrorBanner: shouldShowChatErrorBanner(messages, error),
     hasMessages: messages.length > 0,
   };
 }
