@@ -78,6 +78,61 @@ ${ragContext}
   return instruction;
 }
 
+const RATE_LIMIT_ERROR_PATTERNS = [
+  "rate limit",
+  "rate_limit",
+  "429",
+  "too many requests",
+  "quota",
+  "tokens per day",
+  "tpd",
+  "rate_limit_exceeded",
+] as const;
+
+/** Maps provider stream errors to safe client-facing text (no stack traces). */
+function sanitizeChatStreamError(error: unknown): string {
+  const raw =
+    error instanceof Error
+      ? error.message
+      : typeof error === "string"
+        ? error
+        : "An error occurred.";
+  const message = raw.trim();
+
+  if (!message) {
+    return "The AI service encountered an error. Please try again.";
+  }
+
+  const lower = message.toLowerCase();
+
+  if (RATE_LIMIT_ERROR_PATTERNS.some((pattern) => lower.includes(pattern))) {
+    return message.length > 320 ? `${message.slice(0, 317)}…` : message;
+  }
+
+  if (
+    lower.includes("not configured") ||
+    lower.includes("unauthorized") ||
+    lower.includes("invalid api key") ||
+    lower.includes("authentication")
+  ) {
+    return "The AI service is not configured or authorized.";
+  }
+
+  if (lower.includes("service unavailable") || lower.includes("503")) {
+    return "The AI service is temporarily unavailable. Please try again shortly.";
+  }
+
+  if (message.includes("\n    at ") || message.includes("node_modules")) {
+    return "The AI service encountered an error. Please try again.";
+  }
+
+  if (message.length <= 320 && !message.includes("```")) {
+    return message;
+  }
+
+  return "The AI service encountered an error. Please try again.";
+}
+
 export async function POST(request: Request): Promise<Response> {
   const requestId = generateRequestId();
   const startedAt = Date.now();
@@ -245,7 +300,9 @@ export async function POST(request: Request): Promise<Response> {
       },
     });
 
-    return result.toUIMessageStreamResponse();
+    return result.toUIMessageStreamResponse({
+      onError: sanitizeChatStreamError,
+    });
   } catch (error) {
     logger.error("request_failed", {
       threadId,
