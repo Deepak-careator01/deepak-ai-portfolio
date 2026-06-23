@@ -3,9 +3,10 @@ import "server-only";
 import { streamText } from "ai";
 
 import {
-  chatRequestSchema,
+  chatRequestPayloadSchema,
+  countConversationCharacters,
   getLastUserMessage,
-  validateConversationSize,
+  validateLlmContext,
 } from "@/server/chat/request-validation";
 import { trimChatHistoryForModel } from "@/server/chat/context-window";
 import {
@@ -177,23 +178,51 @@ export async function POST(request: Request): Promise<Response> {
     return badRequest("Invalid JSON body.", requestId);
   }
 
-  const parsed = chatRequestSchema.safeParse(body);
+  const parsed = chatRequestPayloadSchema.safeParse(body);
 
   if (!parsed.success) {
     const message = parsed.error.issues.map((issue) => issue.message).join("; ");
-    logger.warn("validation_failed", { error: message });
+    logger.warn("payload_validation_failed", { error: message });
     return badRequest(message, requestId);
   }
 
   const { messages, threadId } = parsed.data;
-  const sizeError = validateConversationSize(messages);
 
-  if (sizeError) {
-    logger.warn("payload_too_large", { error: sizeError });
-    return badRequest(sizeError, requestId);
-  }
+  logger.info("context_before_trim", {
+    threadId,
+    inputMessages: messages.length,
+    metadata: {
+      messageCount: messages.length,
+      totalCharacters: countConversationCharacters(messages),
+    },
+  });
 
   const messagesForLlm = trimChatHistoryForModel(messages, env.maxChatHistoryMessages);
+
+  const llmContextError = validateLlmContext(messagesForLlm);
+  if (llmContextError) {
+    logger.warn("llm_context_validation_failed", {
+      threadId,
+      error: llmContextError,
+      messagesSentToLLM: messagesForLlm.length,
+      metadata: {
+        messageCount: messagesForLlm.length,
+        totalCharacters: countConversationCharacters(messagesForLlm),
+      },
+    });
+    return badRequest(llmContextError, requestId);
+  }
+
+  logger.info("context_after_trim", {
+    threadId,
+    inputMessages: messages.length,
+    messagesSentToLLM: messagesForLlm.length,
+    metadata: {
+      messageCount: messagesForLlm.length,
+      totalCharacters: countConversationCharacters(messagesForLlm),
+    },
+  });
+
   const lastUserMessage = getLastUserMessage(messages);
   const inputSafety = lastUserMessage ? analyzeInputSafety(lastUserMessage) : null;
 
