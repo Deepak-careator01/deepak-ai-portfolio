@@ -136,6 +136,40 @@ function sanitizeChatStreamError(error: unknown): string {
   return "The AI service encountered an error. Please try again.";
 }
 
+function mapStreamSetupError(error: unknown): { status: number; message: string } {
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === "string"
+        ? error
+        : "unknown_error";
+  const lower = message.toLowerCase();
+
+  if (RATE_LIMIT_ERROR_PATTERNS.some((pattern) => lower.includes(pattern))) {
+    return {
+      status: 429,
+      message: sanitizeChatStreamError(error),
+    };
+  }
+
+  if (
+    lower.includes("not configured") ||
+    lower.includes("unauthorized") ||
+    lower.includes("invalid api key") ||
+    lower.includes("authentication")
+  ) {
+    return {
+      status: 503,
+      message: "The AI service is not configured or authorized.",
+    };
+  }
+
+  return {
+    status: 500,
+    message: "Failed to generate AI response. Please try again later.",
+  };
+}
+
 export async function POST(request: Request): Promise<Response> {
   const requestId = generateRequestId();
   const startedAt = Date.now();
@@ -365,6 +399,8 @@ export async function POST(request: Request): Promise<Response> {
       onError: sanitizeChatStreamError,
     });
   } catch (error) {
+    const mapped = mapStreamSetupError(error);
+
     logger.error("request_failed", {
       threadId,
       latencyMs: Date.now() - startedAt,
@@ -372,6 +408,7 @@ export async function POST(request: Request): Promise<Response> {
       memoryUsed,
       status: "error",
       error: error instanceof Error ? error.message : "unknown_error",
+      metadata: { httpStatus: mapped.status },
     });
 
     trackAnalyticsEvent("chat_failed", {
@@ -379,6 +416,14 @@ export async function POST(request: Request): Promise<Response> {
     });
     getMonitoring().errors.captureException(error, { requestId, threadId });
 
-    return internalError("Failed to generate AI response. Please try again later.", requestId);
+    if (mapped.status === 429) {
+      return rateLimited(mapped.message, requestId);
+    }
+
+    if (mapped.status === 503) {
+      return serviceUnavailable(mapped.message, requestId);
+    }
+
+    return internalError(mapped.message, requestId);
   }
 }

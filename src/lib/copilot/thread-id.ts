@@ -1,0 +1,7 @@
+const THREAD_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/** Returns true when the value is a valid copilot thread UUID. */
+export function isValidCopilotThreadId(threadId: string): boolean {
+  return THREAD_ID_PATTERN.test(threadId);
+}

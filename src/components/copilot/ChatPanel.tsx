@@ -1,13 +1,12 @@
 "use client";
 
-import { History, Sparkles, X } from "lucide-react";
-import { useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 import { ChatErrorBanner } from "@/components/copilot/ChatErrorBanner";
+import { ChatHeader } from "@/components/copilot/ChatHeader";
 import { ChatInput } from "@/components/copilot/ChatInput";
 import { ChatSidebar } from "@/components/copilot/ChatSidebar";
 import { MessageList } from "@/components/copilot/MessageList";
-import { Button } from "@/components/ui/button";
 import { useCopilotChat } from "@/hooks/use-copilot-chat";
 import { cn } from "@/lib/utils";
 
@@ -37,6 +36,7 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
     abortStream,
     clearError,
     showErrorBanner,
+    isChatReady,
   } = useCopilotChat();
 
   useEffect(() => {
@@ -67,22 +67,26 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
     }
   }, [open, abortStream]);
 
-  const handleSelectThread = (threadId: string) => {
+  const handleSelectThread = useCallback((threadId: string) => {
     switchThread(threadId);
     setSidebarOpen(false);
-  };
+  }, [switchThread]);
+
+  const handlePrefillConsumed = useCallback(() => {
+    setSuggestionPrefill(undefined);
+  }, []);
 
   return (
     <div
       className={cn(
-        "fixed inset-0 z-[70] transition-opacity duration-200",
+        "fixed inset-0 z-[70] transition-opacity duration-150",
         open ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0",
       )}
       aria-hidden={!open}
     >
       <button
         type="button"
-        className="absolute inset-0 bg-background/50 backdrop-blur-[2px]"
+        className="absolute inset-0 bg-black/25 dark:bg-black/50"
         onClick={onClose}
         tabIndex={open ? 0 : -1}
         aria-label="Close chat panel"
@@ -94,46 +98,19 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
         aria-modal="true"
         aria-labelledby={titleId}
         className={cn(
-          "absolute right-0 bottom-0 flex w-full flex-col border border-border/60 bg-background shadow-2xl",
-          "h-[min(100dvh,100%)] sm:right-4 sm:bottom-24 sm:h-[min(36rem,calc(100dvh-6rem))] sm:w-[min(42rem,calc(100vw-2rem))] sm:rounded-2xl",
-          "transition-[transform,opacity] duration-200",
-          open ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0",
+          "absolute right-0 bottom-0 flex w-full flex-col overflow-hidden bg-background shadow-2xl",
+          "h-[min(100dvh,100%)] sm:right-4 sm:bottom-20 sm:h-[min(40rem,calc(100dvh-5rem))] sm:w-[min(48rem,calc(100vw-2rem))] sm:rounded-xl sm:border sm:border-border/50",
+          "transition-[transform,opacity] duration-150 ease-out",
+          open ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0",
         )}
       >
-        <header className="flex items-center justify-between gap-3 border-b border-border/60 px-4 py-3.5">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              className="sm:hidden"
-              onClick={() => setSidebarOpen((current) => !current)}
-              aria-label={sidebarOpen ? "Hide chat history" : "Show chat history"}
-            >
-              <History className="size-4" aria-hidden />
-            </Button>
-
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-border/60 bg-muted/30">
-              <Sparkles className="size-4 text-foreground/80" aria-hidden />
-            </div>
-
-            <div className="min-w-0">
-              <h2 id={titleId} className="truncate text-base font-semibold text-foreground">
-                Ask Deepak AI
-              </h2>
-              <p className="truncate text-xs text-muted-foreground">Portfolio copilot</p>
-            </div>
-          </div>
-
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={onClose}
-            aria-label="Close chat panel"
-          >
-            <X className="size-4" aria-hidden />
-          </Button>
-        </header>
+        <ChatHeader
+          titleId={titleId}
+          onClose={onClose}
+          showMobileMenu
+          sidebarOpen={sidebarOpen}
+          onToggleSidebar={() => setSidebarOpen((current) => !current)}
+        />
 
         {showErrorBanner && error ? (
           <ChatErrorBanner
@@ -159,7 +136,7 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
             <>
               <button
                 type="button"
-                className="absolute inset-0 z-10 bg-background/40 sm:hidden"
+                className="absolute inset-0 z-10 bg-black/20 sm:hidden"
                 onClick={() => setSidebarOpen(false)}
                 aria-label="Close chat history"
               />
@@ -172,12 +149,12 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
                   setSidebarOpen(false);
                 }}
                 onDeleteThread={deleteThread}
-                className="absolute inset-y-0 left-0 z-20 shadow-lg sm:hidden"
+                className="absolute inset-y-0 left-0 z-20 w-[min(14rem,80vw)] shadow-xl sm:hidden"
               />
             </>
           ) : null}
 
-          <div className="flex min-w-0 flex-1 flex-col">
+          <div className="flex min-w-0 flex-1 flex-col bg-muted/10">
             <MessageList
               messages={messages}
               status={status}
@@ -189,7 +166,8 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
               onSend={sendMessage}
               status={status}
               prefill={suggestionPrefill}
-              onPrefillConsumed={() => setSuggestionPrefill(undefined)}
+              onPrefillConsumed={handlePrefillConsumed}
+              disabled={!isChatReady}
             />
           </div>
         </div>

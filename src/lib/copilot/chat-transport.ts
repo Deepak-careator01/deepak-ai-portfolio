@@ -1,5 +1,7 @@
 import { DefaultChatTransport, type UIMessage } from "ai";
 
+import { isValidCopilotThreadId } from "@/lib/copilot/thread-id";
+
 /** Extracts plain text from AI SDK UI message parts. */
 export function extractUIMessageText(message: UIMessage): string {
   return message.parts
@@ -25,7 +27,7 @@ export function createCopilotChatTransport({ threadId }: CopilotChatTransportOpt
     prepareSendMessagesRequest: ({ messages, body }) => ({
       body: {
         ...body,
-        threadId,
+        ...(isValidCopilotThreadId(threadId) ? { threadId } : {}),
         messages: messages
           .filter((message) => message.role === "user" || message.role === "assistant")
           .map((message) => ({

@@ -25,7 +25,6 @@ export function MessageBubble({
   const isUser = message.role === "user";
   const text = extractUIMessageText(message);
   const [copied, setCopied] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
 
   const handleCopy = useCallback(async () => {
     if (!text.trim()) {
@@ -47,82 +46,73 @@ export function MessageBubble({
 
   return (
     <div
-      className={cn("group/message flex w-full gap-2", isUser ? "justify-end" : "justify-start", className)}
+      className={cn("group/message w-full", className)}
       role="article"
       aria-label={isUser ? "Your message" : "Deepak AI message"}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
     >
-      {!isUser ? (
-        <div
-          className="mt-1 flex size-7 shrink-0 items-center justify-center rounded-full border border-border/60 bg-muted/40 text-[10px] font-semibold text-muted-foreground"
-          aria-hidden
-        >
-          AI
+      {isUser ? (
+        <div className="flex justify-end">
+          <div className="max-w-[85%] rounded-2xl bg-muted/50 px-3.5 py-2 text-sm leading-relaxed text-foreground">
+            <p className="whitespace-pre-wrap">{text}</p>
+          </div>
         </div>
-      ) : null}
-
-      <div className={cn("flex max-w-[min(88%,32rem)] flex-col", isUser ? "items-end" : "items-start")}>
-        <div
-          className={cn(
-            "relative rounded-2xl px-4 py-3 shadow-sm transition-colors",
-            isUser
-              ? "bg-primary text-primary-foreground"
-              : "border border-border/60 bg-card/90 text-foreground",
-          )}
-        >
-          {isUser ? (
-            <p className="text-sm leading-relaxed whitespace-pre-wrap">{text}</p>
-          ) : text.trim() ? (
-            isStreaming ? (
-              <p className="text-sm leading-relaxed whitespace-pre-wrap">{text}</p>
-            ) : (
-              <MarkdownContent content={text} />
-            )
-          ) : (
-            <span className="text-sm text-muted-foreground">…</span>
-          )}
-        </div>
-
-        {!isUser && text.trim() && !isStreaming ? (
-          <div
-            className={cn(
-              "mt-1.5 flex items-center gap-1 transition-opacity duration-150",
-              isHovered ? "opacity-100" : "opacity-0",
-            )}
-          >
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-xs"
-              onClick={() => {
-                void handleCopy();
-              }}
-              aria-label={copied ? "Copied" : "Copy message"}
-              title={copied ? "Copied" : "Copy"}
-            >
-              {copied ? (
-                <Check className="size-3.5 text-emerald-600" aria-hidden />
+      ) : (
+        <div className="max-w-none">
+          <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground/80">
+            Deepak AI
+          </div>
+          <div className="text-sm leading-[1.7] text-foreground">
+            {text.trim() ? (
+              isStreaming ? (
+                <p className="whitespace-pre-wrap">{text}</p>
               ) : (
-                <Copy className="size-3.5" aria-hidden />
-              )}
-            </Button>
+                <MarkdownContent content={text} />
+              )
+            ) : (
+              <span className="text-muted-foreground">…</span>
+            )}
+          </div>
 
-            {onRegenerate ? (
+          {text.trim() && !isStreaming ? (
+            <div
+              className={cn(
+                "mt-1.5 flex items-center gap-0.5 opacity-100 sm:opacity-0 sm:transition-opacity sm:duration-150",
+                "sm:group-hover/message:opacity-100 sm:group-focus-within/message:opacity-100",
+              )}
+            >
               <Button
                 type="button"
                 variant="ghost"
                 size="icon-xs"
-                onClick={onRegenerate}
-                aria-label="Regenerate response"
-                title="Regenerate"
+                className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                onClick={() => {
+                  void handleCopy();
+                }}
+                aria-label={copied ? "Copied" : "Copy message"}
               >
-                <RotateCcw className="size-3.5" aria-hidden />
+                {copied ? (
+                  <Check className="size-3 text-emerald-600" aria-hidden />
+                ) : (
+                  <Copy className="size-3" aria-hidden />
+                )}
               </Button>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
+
+              {onRegenerate ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-xs"
+                  className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                  onClick={onRegenerate}
+                  aria-label="Regenerate response"
+                >
+                  <RotateCcw className="size-3" aria-hidden />
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      )}
     </div>
   );
 }
